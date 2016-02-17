@@ -15,6 +15,7 @@ classdef Test_F18DeoxyGlucoseKinetics < matlab.unittest.TestCase
 
 	properties
  		registry
+        sessionData
  		testObj
  	end
 
@@ -24,13 +25,27 @@ classdef Test_F18DeoxyGlucoseKinetics < matlab.unittest.TestCase
  			this.assumeEqual(1,1);
  			this.verifyEqual(1,1);
  			this.assertEqual(1,1);
- 		end
+        end
+        function test_disp(this)
+            disp(this.testObj);
+        end
+        function test_estimateParameters(this)
+        end
+        function test_plotParVars(this)
+        end
+        function test_simulateMcmc(this)
+        end
+        function test_wholebrain(this)
+        end
 	end
 
  	methods (TestClassSetup)
 		function setupF18DeoxyGlucoseKinetics(this)
  			import mlkinetics.*;
- 			this.testObj_ = F18DeoxyGlucoseKinetics;
+            studyData = mlpipeline.StudyDataSingletons.instance('test_raichle');
+            iter = studyData.createIteratorForSessionData;
+            this.sessionData = iter.next;
+ 			this.testObj_ = F18DeoxyGlucoseKinetics(this.sessionData);
  		end
 	end
 
