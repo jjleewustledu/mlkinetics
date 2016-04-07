@@ -20,11 +20,13 @@ classdef Test_F18DeoxyGlucoseKinetics < matlab.unittest.TestCase
  	end
 
 	methods (Test)
-		function test_afun(this)
+		function test_looper(this)
  			import mlkinetics.*;
- 			this.assumeEqual(1,1);
- 			this.verifyEqual(1,1);
- 			this.assertEqual(1,1);
+            obj = this.testObj.looper;
+            verifyEqual(obj.kinetics.k21, nan, 'RelTol', 1e-4);
+            verifyEqual(obj.kinetics.k12, nan, 'RelTol', 1e-4);
+            verifyEqual(obj.kinetics.k32, nan, 'RelTol', 1e-4);
+            verifyEqual(obj.kinetics.k23, nan, 'RelTol', 1e-4);
         end
         function test_disp(this)
             disp(this.testObj);
@@ -42,7 +44,7 @@ classdef Test_F18DeoxyGlucoseKinetics < matlab.unittest.TestCase
  	methods (TestClassSetup)
 		function setupF18DeoxyGlucoseKinetics(this)
  			import mlkinetics.*;
-            studyData = mlpipeline.StudyDataSingletons.instance('test_raichle');
+            studyData = mlpipeline.StudyDataSingletons.instance('test_powers');
             iter = studyData.createIteratorForSessionData;
             this.sessionData = iter.next;
  			this.testObj_ = F18DeoxyGlucoseKinetics(this.sessionData);

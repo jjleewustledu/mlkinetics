@@ -9,15 +9,15 @@ classdef F18DeoxyGlucoseKinetics < mlkinetics.AbstractKinetics & mlkinetics.F18
  	%% It was developed on Matlab 9.0.0.307022 (R2016a) Prerelease for MACI64.
  	
 
-	properties 		
-        fu = 1 
+	properties
+        fu = 1 % FUDGE
                                    % Joanne Markham used the notation K_1 = V_B*k_{21}, rate from compartment 1 to 2.
-        k1 = (0.102  + 0.054)/2/60 % Mean of grey, white values from Huang Am J Physiol 1980, but in s^{-1}.
-        k2 = (0.130  + 0.109)/2/60
-        k3 = (0.062  + 0.045)/2/60
-        k4 = (0.0068 + 0.0058)/2/60
-        u0 = 15 % for tscCounts
-        v1 = 0.03   
+        k1 = 3.9461/60 %(0.102  + 0.054)/2/60 % Mean of grey, white values from Huang Am J Physiol 1980, but in s^{-1}.
+        k2 = 0.30926/60 %(0.130  + 0.109)/2/60
+        k3 = 0.18617/60 %(0.062  + 0.045)/2/60
+        k4 = 0.013817/60 %(0.0068 + 0.0058)/2/60
+        u0 = 4.038 % for tscCounts
+        v1 = 0.0305
         
         sk1 = 0.028/60
         sk2 = 0.066/60
@@ -53,14 +53,14 @@ classdef F18DeoxyGlucoseKinetics < mlkinetics.AbstractKinetics & mlkinetics.F18
         end
         function m  = get.mapParams(this)
             m = containers.Map;
-            N = 100;
-            m('fu') = struct('fixed', 1, 'min', 0,                            'mean', this.fu, 'max',           1);  
+            N = 50;
+            m('fu') = struct('fixed', 1, 'min', eps,                          'mean', this.fu, 'max',           100);  
             m('k1') = struct('fixed', 0, 'min', max(this.k1 - N*this.sk1, 0), 'mean', this.k1, 'max', this.k1 + N*this.sk1);
             m('k2') = struct('fixed', 0, 'min', max(this.k2 - N*this.sk2, 0), 'mean', this.k2, 'max', this.k2 + N*this.sk2);
             m('k3') = struct('fixed', 0, 'min', max(this.k3 - N*this.sk3, 0), 'mean', this.k3, 'max', this.k3 + N*this.sk3);
             m('k4') = struct('fixed', 0, 'min', max(this.k4 - N*this.sk4, 0), 'mean', this.k4, 'max', this.k4 + N*this.sk4);
-            m('u0') = struct('fixed', 0, 'min', 0,                            'mean', this.u0, 'max',          10*this.u0);  
-            m('v1') = struct('fixed', 0, 'min', 0,                            'mean', this.v1, 'max',           0.1);  
+            m('u0') = struct('fixed', 1, 'min', 0,                            'mean', this.u0, 'max',           100);  
+            m('v1') = struct('fixed', 1, 'min', 0,                            'mean', this.v1, 'max',           0.1);  
         end
         function p  = get.parameters(this)            
             p   = [this.finalParams('fu'), this.finalParams('k1'), this.finalParams('k2'), ...
@@ -69,28 +69,55 @@ classdef F18DeoxyGlucoseKinetics < mlkinetics.AbstractKinetics & mlkinetics.F18
     end
     
     methods (Static)
-        function [kmin,k1k3overk2k3,fdgk] = runYi(Ca, t, qpet, notes)
+        function [this,kmin,k1k3overk2k3] = runYi(Ca, t, qpet, notes)
             assert(isnumeric(Ca));
             assert(isnumeric(t));
             assert(isnumeric(qpet));
             assert(length(Ca) == length(t) && length(t) == length(qpet));
-            t0             = tic;
-            fdgk           = mlkinetics.F18DeoxyGlucoseKinetics({t}, {qpet});
-            Ca(Ca < 0)     = 0;
-            fdgk.Ca        = Ca;
-            fdgk.notes     = notes;
-            fdgk.showPlots = true;
-            fdgk           = fdgk.estimateParameters;
-            fdgk.plotTimeSamples
             
-            kmin         = 60*[fdgk.k1 fdgk.k2 fdgk.k3 fdgk.k4];
+            this           = mlkinetics.F18DeoxyGlucoseKinetics({t}, {qpet});
+            Ca(Ca < 0)     = 0;
+            this.Ca        = Ca;
+            this.notes     = notes;
+            this.showPlots = true;
+            this           = this.estimateParameters;
+            this.plotTimeSamples
+            
+            kmin         = 60*[this.k1 this.k2 this.k3 this.k4];
             k1k3overk2k3 = kmin(1)*kmin(3)/(kmin(2) + kmin(3));
             fprintf('\n[k_1 ... k_4] / min^{-1} -> %s\n', mat2str(kmin));
-            fprintf('frac{k_1 k_3}{k_2 + k_3} / min^{-1} -> %s\n', mat2str(k1k3overk2k3));            
-            toct0        = toc(t0);
+            fprintf('frac{k_1 k_3}{k_2 + k_3} / min^{-1} -> %s\n', mat2str(k1k3overk2k3));
         end
-        function [output,toct0,toct1] = loopRegionsLocally(tag)
-            studyDat = mlpipeline.StudyDataSingleton.instance(tag);
+        function [this,kmin,k1k3overk2k3] = runPowers(sessDat)
+            import mlpet.*;
+            cd(sessDat.sessionPath);
+            sessDat.fslmerge_t;
+            dta  = DTA.loadSessionData(sessDat);
+            tsc  = TSC.import(sessDat.tsc_fqfn);
+            
+            this           = mlkinetics.F18DeoxyGlucoseKinetics({ tsc.times }, { tsc.becquerels });
+            this.Ca        = pchip(dta.times, dta.becquerels, tsc.times);
+            this.showPlots = true;
+            this           = this.estimateParameters;
+            this.plotTimeSamples;
+            
+            kmin         = 60*[this.k1 this.k2 this.k3 this.k4];
+            k1k3overk2k3 = kmin(1)*kmin(3)/(kmin(2) + kmin(3));
+            fprintf('\n[k_1 ... k_4] / min^{-1} -> %s\n', mat2str(kmin));
+            fprintf('frac{k_1 k_3}{k_2 + k_3} / min^{-1} -> %s\n', mat2str(k1k3overk2k3));
+        end
+        function [this,kmin,k1k3overk2k3] = runSession(sessDat)
+            import mlkinetics.*;
+            switch (class(sessDat))
+                case 'mlpowers.SessionData'
+                    [this,kmin,k1k3overk2k3] = F18DeoxyGlucoseKinetics.runPowers(sessDat);
+                otherwise
+                    error('mlkinetics:unsupportedSwitchCase', ...
+                         'class(F18DeoxyGlucoseKinetics.runSession.sessDat)->%s', class(sessDat));
+            end
+        end
+        function [output,toct0,toct1] = looper(tag)
+            studyDat = mlpipeline.StudyDataSingletons.instance(tag);
             assert(studyDat.isLocalhost); % studyData must query for machine identity before returning subjectsDir and other filesystem information.     
             
             t0 = tic;
@@ -100,17 +127,15 @@ classdef F18DeoxyGlucoseKinetics < mlkinetics.AbstractKinetics & mlkinetics.F18
             regions  = studyDat.regions;            
             output   = cell(length(sessPths), length(visits), length(regions));
             
-            for se = 1:1 %length(sessPths)
-                for vi = 1:1 %length(visits)
-                    for re = 1:1 %length(regions)
+            for se = 1:length(sessPths)
+                for vi = 1:length(visits)
+                    for re = 1:length(regions)
                         try
                             t1 = tic;
-                            fprintf('%s:  is working with session %s visit %s region %s\n', mfilename, sessPths{d}, visits{vi}, regions{re});
-                            rm = mlkinetics.RegionalMeasurements();
-                            [v,rm] = rm.vFrac;
-                            k      = rm.kinetics; 
-                            k      = k.parameters;
-                            output{se,vi,re} = struct('v', v, 'kinetics', k);
+                            fprintf('%s:  is working with session %s visit %s region %s\n', mfilename, sessPths{se}, visits{vi}, regions{re});
+                            fdgk = mlkinetics.F18DeoxyGlucoseKinetics.runSession( ...
+                                studyDat.sessionData('sessionPath', sessPths{se}, 'vnumber', vi, 'rnumber', re));
+                            output{se,vi,re} = fdgk;
                             toct1 = toc(t1);
                             fprintf('Elapsed time:  %g seconds\n\n\n\n', toct1);
                         catch ME
@@ -122,7 +147,13 @@ classdef F18DeoxyGlucoseKinetics < mlkinetics.AbstractKinetics & mlkinetics.F18
             
             studyDat.saveWorkspace;
             studyDat.diaryOff;
-            toct0 = toc(t0);
+            toct0 = toc(t0);         
+        end
+        function [output,toct0,toct1] = loopSubjectsLocally(tag)
+        end
+        function [output,toct0,toct1] = loopSessionsLocally(tag)
+        end
+        function [output,toct0,toct1] = loopRegionsLocally(tag)
         end
         function alpha_ = a(k2, k3, k4)
             k234   = k2 + k3 + k4;
@@ -134,13 +165,13 @@ classdef F18DeoxyGlucoseKinetics < mlkinetics.AbstractKinetics & mlkinetics.F18
             beta_ = k234 + sqrt(k234^2 - 4*k2*k4);
             beta_ = beta_/2;
         end
-        function q      = q2(Ca, k1, a, b, k4, t, v1)
-            scale = k1*v1/(b - a);
+        function q      = q2(Ca, k1, a, b, k4, t)
+            scale = k1/(b - a);
             q = scale * conv((k4 - a)*exp(-a*t) + (b - k4)*exp(-b*t), Ca);
             q = q(1:length(t));
         end
-        function q      = q3(Ca, k1, a, b, k3, t, v1)
-            scale = k3*k1*v1/(b - a);
+        function q      = q3(Ca, k1, a, b, k3, t)
+            scale = k3*k1/(b - a);
             q = scale * conv(exp(-a*t) - exp(-b*t), Ca);
             q = q(1:length(t));
         end
@@ -148,10 +179,10 @@ classdef F18DeoxyGlucoseKinetics < mlkinetics.AbstractKinetics & mlkinetics.F18
             import mlkinetics.*;
             a = F18DeoxyGlucoseKinetics.a(k2, k3, k4);
             b = F18DeoxyGlucoseKinetics.b(k2, k3, k4);
-            q = v1*Ca + ...
-                F18DeoxyGlucoseKinetics.q2(Ca, k1, a, b, k4, t, v1) + ...
-                F18DeoxyGlucoseKinetics.q3(Ca, k1, a, b, k3, t, v1);
-            q = F18DeoxyGlucoseKinetics.slide(q, t, u0);
+            q = fu*F18DeoxyGlucoseKinetics.q2(Ca, k1, a, b, k4, t) + ...
+                fu*F18DeoxyGlucoseKinetics.q3(Ca, k1, a, b, k3, t) + ...
+                v1*Ca;
+            q = F18DeoxyGlucoseKinetics.slide(q, t, u0); 
         end
         function this   = simulateMcmc(Ca, fu, k1, k2, k3, k4, t, u0, v1, mapParams)
             import mlkinetics.*;
@@ -166,7 +197,7 @@ classdef F18DeoxyGlucoseKinetics < mlkinetics.AbstractKinetics & mlkinetics.F18
         end    
     end
     
-	methods		  
+	methods
  		function this = F18DeoxyGlucoseKinetics(varargin)
  			%% F18DEOXYGLUCOSEKINETICS
  			%  Usage:  this = F18DeoxyGlucoseKinetics() 			
@@ -187,10 +218,10 @@ classdef F18DeoxyGlucoseKinetics < mlkinetics.AbstractKinetics & mlkinetics.F18
             b = mlkinetics.F18DeoxyGlucoseKinetics.b(this.k2, this.k3, this.k4);
         end
         function q2   = itsQ2(this)
-            q2 = mlkinetics.F18DeoxyGlucoseKinetics.q2(this.Ca, this.k1, this.itsA, this.itsB, this.k4, this.times{1}, this.v1);
+            q2 = mlkinetics.F18DeoxyGlucoseKinetics.q2(this.Ca, this.k1, this.itsA, this.itsB, this.k4, this.times{1});
         end
         function q3   = itsQ3(this)
-            q3 = mlkinetics.F18DeoxyGlucoseKinetics.q3(this.Ca, this.k1, this.itsA, this.itsB, this.k3, this.times{1}, this.v1);
+            q3 = mlkinetics.F18DeoxyGlucoseKinetics.q3(this.Ca, this.k1, this.itsA, this.itsB, this.k3, this.times{1});
         end
         function qpet = itsQpet(this)
             qpet = mlkinetics.F18DeoxyGlucoseKinetics.qpet( ...
@@ -213,11 +244,11 @@ classdef F18DeoxyGlucoseKinetics < mlkinetics.AbstractKinetics & mlkinetics.F18
                 ps(theParams.paramsIndices('k3')) = ps(theParams.paramsIndices('k4'));
                 ps(theParams.paramsIndices('k4')) = tmp;
             end
-            if (ps(theParams.paramsIndices('k2')) > ps(theParams.paramsIndices('k1')))
-                tmp                               = ps(theParams.paramsIndices('k1'));
-                ps(theParams.paramsIndices('k1')) = ps(theParams.paramsIndices('k2'));
-                ps(theParams.paramsIndices('k2')) = tmp;
-            end
+%             if (ps(theParams.paramsIndices('k2')) > ps(theParams.paramsIndices('k1')))
+%                 tmp                               = ps(theParams.paramsIndices('k1'));
+%                 ps(theParams.paramsIndices('k1')) = ps(theParams.paramsIndices('k2'));
+%                 ps(theParams.paramsIndices('k2')) = tmp;
+%             end
         end
         
         function plot(this, varargin)
