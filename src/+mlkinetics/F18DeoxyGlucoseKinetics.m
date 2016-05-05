@@ -11,12 +11,13 @@ classdef F18DeoxyGlucoseKinetics < mlkinetics.AbstractKinetics & mlkinetics.F18
 
 	properties
         fu = 1 % FUDGE
-                                   % Joanne Markham used the notation K_1 = V_B*k_{21}, rate from compartment 1 to 2.
-        k1 = 3.9461/60 %(0.102  + 0.054)/2/60 % Mean of grey, white values from Huang Am J Physiol 1980, but in s^{-1}.
-        k2 = 0.30926/60 %(0.130  + 0.109)/2/60
-        k3 = 0.18617/60 %(0.062  + 0.045)/2/60
+        % Joanne Markham used the notation K_1 = V_B*k_{21}, rate from compartment 1 to 2.
+        % Mean of grey, white values from Huang Am J Physiol 1980, but in s^{-1}.
+        k1 = 3.9461/60   %(0.102  + 0.054)/2/60 
+        k2 = 0.30926/60  %(0.130  + 0.109)/2/60
+        k3 = 0.18617/60  %(0.062  + 0.045)/2/60
         k4 = 0.013817/60 %(0.0068 + 0.0058)/2/60
-        u0 = 4.038 % for tscCounts
+        u0 = 4.038       % for tscCounts
         v1 = 0.0305
         
         sk1 = 0.028/60
@@ -53,14 +54,16 @@ classdef F18DeoxyGlucoseKinetics < mlkinetics.AbstractKinetics & mlkinetics.F18
         end
         function m  = get.mapParams(this)
             m = containers.Map;
-            N = 50;
-            m('fu') = struct('fixed', 1, 'min', eps,                          'mean', this.fu, 'max',           100);  
-            m('k1') = struct('fixed', 0, 'min', max(this.k1 - N*this.sk1, 0), 'mean', this.k1, 'max', this.k1 + N*this.sk1);
-            m('k2') = struct('fixed', 0, 'min', max(this.k2 - N*this.sk2, 0), 'mean', this.k2, 'max', this.k2 + N*this.sk2);
-            m('k3') = struct('fixed', 0, 'min', max(this.k3 - N*this.sk3, 0), 'mean', this.k3, 'max', this.k3 + N*this.sk3);
-            m('k4') = struct('fixed', 0, 'min', max(this.k4 - N*this.sk4, 0), 'mean', this.k4, 'max', this.k4 + N*this.sk4);
-            m('u0') = struct('fixed', 1, 'min', 0,                            'mean', this.u0, 'max',           100);  
-            m('v1') = struct('fixed', 1, 'min', 0,                            'mean', this.v1, 'max',           0.1);  
+            N = 10;
+            
+            % From Powers xlsx "Final Normals WB PET PVC & ETS"
+            m('fu') = struct('fixed', 1, 'min', eps,                               'mean', this.fu, 'max', 100);  
+            m('k1') = struct('fixed', 0, 'min', max(1.4951/60    - N*this.sk1, 0), 'mean', this.k1, 'max',   6.6234/60   + N*this.sk1);
+            m('k2') = struct('fixed', 0, 'min', max(0.04517/60   - N*this.sk2, 0), 'mean', this.k2, 'max',   1.7332/60   + N*this.sk2);
+            m('k3') = struct('fixed', 0, 'min', max(0.05827/60   - N*this.sk3, 0), 'mean', this.k3, 'max',   0.41084/60  + N*this.sk3);
+            m('k4') = struct('fixed', 0, 'min', max(0.0040048/60 - N*this.sk4, 0), 'mean', this.k4, 'max',   0.017819/60 + N*this.sk4);
+            m('u0') = struct('fixed', 0, 'min', 0,                                 'mean', this.u0, 'max', 100);  
+            m('v1') = struct('fixed', 1, 'min', 0,                                 'mean', this.v1, 'max',   0.1);  
         end
         function p  = get.parameters(this)            
             p   = [this.finalParams('fu'), this.finalParams('k1'), this.finalParams('k2'), ...
@@ -92,10 +95,11 @@ classdef F18DeoxyGlucoseKinetics < mlkinetics.AbstractKinetics & mlkinetics.F18
             import mlpet.*;
             cd(sessDat.sessionPath);
             sessDat.fslmerge_t;
-            dta  = DTA.loadSessionData(sessDat);
-            tsc  = TSC.import(sessDat.tsc_fqfn);
+            dta = DTA.loadSessionData(sessDat);
+            tsc = TSC.import(sessDat.tsc_fqfn);
             
             this           = mlkinetics.F18DeoxyGlucoseKinetics({ tsc.times }, { tsc.becquerels });
+            this.v1        = sessDat.v1;
             this.Ca        = pchip(dta.times, dta.becquerels, tsc.times);
             this.showPlots = true;
             this           = this.estimateParameters;
@@ -107,51 +111,40 @@ classdef F18DeoxyGlucoseKinetics < mlkinetics.AbstractKinetics & mlkinetics.F18
             fprintf('frac{k_1 k_3}{k_2 + k_3} / min^{-1} -> %s\n', mat2str(k1k3overk2k3));
         end
         function [this,kmin,k1k3overk2k3] = runSession(sessDat)
-            import mlkinetics.*;
-            switch (class(sessDat))
-                case 'mlpowers.SessionData'
-                    [this,kmin,k1k3overk2k3] = F18DeoxyGlucoseKinetics.runPowers(sessDat);
-                otherwise
-                    error('mlkinetics:unsupportedSwitchCase', ...
-                         'class(F18DeoxyGlucoseKinetics.runSession.sessDat)->%s', class(sessDat));
-            end
         end
-        function [output,toct0,toct1] = looper(tag)
+        function [output,toct0,toct1,studyDat] = looper(tag)      
+        end
+        function [output,toct0,toct1,studyDat] = loopSubjectsLocally(tag)
+        end
+        function [outputs,toct0,toct1,studyDat] = loopSessionsLocally(tag)
             studyDat = mlpipeline.StudyDataSingletons.instance(tag);
             assert(studyDat.isLocalhost); % studyData must query for machine identity before returning subjectsDir and other filesystem information.     
-            
+            iter = studyDat.createIteratorForSessionData;            
+            outputs = {};            
             t0 = tic;
-            studyDat.diaryOn;
-            sessPths = studyDat.sessionPaths;
-            visits   = studyDat.visits;
-            regions  = studyDat.regions;            
-            output   = cell(length(sessPths), length(visits), length(regions));
             
-            for se = 1:length(sessPths)
-                for vi = 1:length(visits)
-                    for re = 1:length(regions)
-                        try
-                            t1 = tic;
-                            fprintf('%s:  is working with session %s visit %s region %s\n', mfilename, sessPths{se}, visits{vi}, regions{re});
-                            fdgk = mlkinetics.F18DeoxyGlucoseKinetics.runSession( ...
-                                studyDat.sessionData('sessionPath', sessPths{se}, 'vnumber', vi, 'rnumber', re));
-                            output{se,vi,re} = fdgk;
-                            toct1 = toc(t1);
-                            fprintf('Elapsed time:  %g seconds\n\n\n\n', toct1);
-                        catch ME
-                            handwarning(ME);
-                        end
-                    end
+            while (iter.hasNext)
+                try
+                    next = iter.next;
+                    
+                    t1 = tic;
+                    fprintf('%s:  is working with session %s\n', mfilename, next.sessionPath);
+                    cd(next.sessionPath);
+                    studyDat.loggingPath = next.sessionPath;
+                    studyDat.diaryOn;
+                    [o.fdgk,o.kim,o.k1k3overk2k3] = mlkinetics.F18DeoxyGlucoseKinetics.runPowers(next);
+                    outputs = [outputs o];
+                    saveFigures(fullfile(next.sessionPath, 'fig', ''));
+                    studyDat.saveWorkspace;
+                    studyDat.diaryOff;
+                    toct1 = toc(t1);
+                    fprintf('Elapsed time:  %g seconds\n\n\n\n', toct1);
+                catch ME
+                    handwarning(ME);
                 end
             end
             
-            studyDat.saveWorkspace;
-            studyDat.diaryOff;
-            toct0 = toc(t0);         
-        end
-        function [output,toct0,toct1] = loopSubjectsLocally(tag)
-        end
-        function [output,toct0,toct1] = loopSessionsLocally(tag)
+            toct0 = toc(t0); 
         end
         function [output,toct0,toct1] = loopRegionsLocally(tag)
         end
