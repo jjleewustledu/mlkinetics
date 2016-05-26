@@ -16,7 +16,7 @@ classdef Test_KineticsControllerLayer < matlab.unittest.TestCase
 	properties
  		registry
         sessionData
-        subjectsDir = '/Volumes/InnominateHD3/Local/test/raichle/PPGdata/idaif'
+        subjectsDir = fullfile(getenv('UNITTESTS'), 'raichle/PPGdata/idaif', '')
  		testObj
     end
     
