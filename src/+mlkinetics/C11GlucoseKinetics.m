@@ -25,9 +25,7 @@ classdef C11GlucoseKinetics
     
     methods (Static)
         function [output,t2] = loopRegionsLocally
-            studyDat = mlpipeline.StudyDataSingleton.instance('arbelaez:GluT');
-            assert(studyDat.isLocalhost); % studyData must query for machine identity before returning subjectsDir and other filesystem information.     
-            
+            studyDat = mlpipeline.StudyDataSingleton.instance('arbelaez:GluT');            
             t0 = tic;
             studyDat.diaryOn;
             sessPths = studyDat.sessionPaths;

@@ -117,8 +117,7 @@ classdef F18DeoxyGlucoseKinetics < mlkinetics.AbstractKinetics & mlkinetics.F18
         function [output,toct0,toct1,studyDat] = loopSubjectsLocally(tag)
         end
         function [outputs,toct0,toct1,studyDat] = loopSessionsLocally(tag)
-            studyDat = mlpipeline.StudyDataSingletons.instance(tag);
-            assert(studyDat.isLocalhost); % studyData must query for machine identity before returning subjectsDir and other filesystem information.     
+            studyDat = mlpipeline.StudyDataSingletons.instance(tag);            
             iter = studyDat.createIteratorForSessionData;            
             outputs = {};            
             t0 = tic;
@@ -130,7 +129,6 @@ classdef F18DeoxyGlucoseKinetics < mlkinetics.AbstractKinetics & mlkinetics.F18
                     t1 = tic;
                     fprintf('%s:  is working with session %s\n', mfilename, next.sessionPath);
                     cd(next.sessionPath);
-                    studyDat.loggingPath = next.sessionPath;
                     studyDat.diaryOn;
                     [o.fdgk,o.kim,o.k1k3overk2k3] = mlkinetics.F18DeoxyGlucoseKinetics.runPowers(next);
                     outputs = [outputs o];

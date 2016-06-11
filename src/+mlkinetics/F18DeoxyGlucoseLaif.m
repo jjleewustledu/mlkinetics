@@ -111,8 +111,7 @@ classdef F18DeoxyGlucoseLaif < mlkinetics.AbstractKinetics & mlkinetics.F18
             fprintf('F18DeoxyGlucoseLaif.run elapsed time -> %g', toc(t0));
         end
         function [output,toct0,toct1] = loopRegionsLocally(tag)
-            studyDat = mlpipeline.StudyDataSingleton.instance(tag);
-            assert(studyDat.isLocalhost); % studyData must query for machine identity before returning subjectsDir and other filesystem information.     
+            studyDat = mlpipeline.StudyDataSingleton.instance(tag);   
             
             t0 = tic;
             studyDat.diaryOn;
