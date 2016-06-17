@@ -57,15 +57,15 @@ classdef F18DeoxyGlucoseKinetics < mlkinetics.AbstractKinetics & mlkinetics.F18
             N = 10;
             
             % From Powers xlsx "Final Normals WB PET PVC & ETS"
-            m('fu') = struct('fixed', 1, 'min', eps,                               'mean', this.fu, 'max', 100);  
+            m('fu') = struct('fixed', 0, 'min', 0.01,                              'mean', this.fu, 'max', 100);  
             m('k1') = struct('fixed', 0, 'min', max(1.4951/60    - N*this.sk1, 0), 'mean', this.k1, 'max',   6.6234/60   + N*this.sk1);
             m('k2') = struct('fixed', 0, 'min', max(0.04517/60   - N*this.sk2, 0), 'mean', this.k2, 'max',   1.7332/60   + N*this.sk2);
             m('k3') = struct('fixed', 0, 'min', max(0.05827/60   - N*this.sk3, 0), 'mean', this.k3, 'max',   0.41084/60  + N*this.sk3);
             m('k4') = struct('fixed', 0, 'min', max(0.0040048/60 - N*this.sk4, 0), 'mean', this.k4, 'max',   0.017819/60 + N*this.sk4);
             m('u0') = struct('fixed', 0, 'min', 0,                                 'mean', this.u0, 'max', 100);  
-            m('v1') = struct('fixed', 1, 'min', 0,                                 'mean', this.v1, 'max',   0.1);  
+            m('v1') = struct('fixed', 1, 'min', 0.01,                              'mean', this.v1, 'max',   0.1);  
         end
-        function p  = get.parameters(this)            
+        function p  = get.parameters(this)
             p   = [this.finalParams('fu'), this.finalParams('k1'), this.finalParams('k2'), ...
                    this.finalParams('k3'), this.finalParams('k4'), this.finalParams('u0'), this.finalParams('v1')]; 
         end
@@ -168,12 +168,13 @@ classdef F18DeoxyGlucoseKinetics < mlkinetics.AbstractKinetics & mlkinetics.F18
         end
         function q      = qpet(Ca, fu, k1, k2, k3, k4, t, u0, v1)
             import mlkinetics.*;
-            a = F18DeoxyGlucoseKinetics.a(k2, k3, k4);
-            b = F18DeoxyGlucoseKinetics.b(k2, k3, k4);
-            q = fu*F18DeoxyGlucoseKinetics.q2(Ca, k1, a, b, k4, t) + ...
-                fu*F18DeoxyGlucoseKinetics.q3(Ca, k1, a, b, k3, t) + ...
-                v1*Ca;
-            q = F18DeoxyGlucoseKinetics.slide(q, t, u0); 
+            Ca = v1*Ca;
+            a  = F18DeoxyGlucoseKinetics.a(k2, k3, k4);
+            b  = F18DeoxyGlucoseKinetics.b(k2, k3, k4);
+            q  = F18DeoxyGlucoseKinetics.q2(Ca, k1, a, b, k4, t) + ...
+                 F18DeoxyGlucoseKinetics.q3(Ca, k1, a, b, k3, t) + ...
+                 fu*Ca;
+            q  = F18DeoxyGlucoseKinetics.slide(q, t, u0); 
         end
         function this   = simulateMcmc(Ca, fu, k1, k2, k3, k4, t, u0, v1, mapParams)
             import mlkinetics.*;
