@@ -224,7 +224,7 @@ classdef F18DeoxyGlucoseKinetics < mlkinetics.AbstractKinetics & mlkinetics.F18
             addOptional(ip, 'mapParams', this.mapParams, @(x) isa(x, 'containers.Map'));
             parse(ip, varargin{:});
             
-            this = this.runMcmc(ip.Results.mapParams, {'fu' 'k1' 'k2' 'k3' 'k4' 'u0' 'v1'});
+            this = this.runMcmc(ip.Results.mapParams, 'keysToVerify', {'fu' 'k1' 'k2' 'k3' 'k4' 'u0' 'v1'});
         end
         function ed   = estimateDataFast(this, fu, k1, k2, k3, k4, u0, v1)
             ed{1} = this.qpet(this.Ca, fu, k1, k2, k3, k4, this.times{1}, u0, v1);

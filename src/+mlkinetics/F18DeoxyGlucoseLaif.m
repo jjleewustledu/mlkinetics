@@ -233,7 +233,8 @@ classdef F18DeoxyGlucoseLaif < mlkinetics.AbstractKinetics & mlkinetics.F18
             addOptional(ip, 'mapParams', this.mapParams, @(x) isa(x, 'containers.Map'));
             parse(ip, varargin{:});
             
-            this = this.runMcmc(ip.Results.mapParams, {'c0' 'ca' 'cb' 'ce' 'cg' 'fu' 'k1' 'k2' 'k3' 'k4' 't0' 'u0' 'v1'});
+            this = this.runMcmc(ip.Results.mapParams, ...
+                'keysToVerify', {'c0' 'ca' 'cb' 'ce' 'cg' 'fu' 'k1' 'k2' 'k3' 'k4' 't0' 'u0' 'v1'});
         end
         function ed   = estimateDataFast(this, c0, ca, cb, ce, cg, fu, k1, k2, k3, k4, t0, u0, v1)
             import mlkinetics.*;

@@ -9,10 +9,6 @@ classdef AbstractKinetics < mlbayesian.AbstractMcmcStrategy
  	%% It was developed on Matlab 9.0.0.307022 (R2016a) Prerelease for MACI64.
  	
 
-	properties
- 		
- 	end
-
 	methods (Static)
         function f    = invs_to_mLmin100g(f)
             f = 100 * 60 * f / mlpet.AutoradiographyBuilder.BRAIN_DENSITY;
