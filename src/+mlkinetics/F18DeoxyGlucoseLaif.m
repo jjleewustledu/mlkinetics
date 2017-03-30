@@ -1,4 +1,4 @@
-classdef F18DeoxyGlucoseLaif < mlkinetics.AbstractKinetics & mlkinetics.F18
+classdef F18DeoxyGlucoseLaif < mlkinetics.AbstractKinetics
 	%% F18DEOXYGLUCOSELAIF  
 
 	%  $Revision$
@@ -6,7 +6,7 @@ classdef F18DeoxyGlucoseLaif < mlkinetics.AbstractKinetics & mlkinetics.F18
  	%  by jjlee,
  	%  last modified $LastChangedDate$
  	%  and checked into repository /Users/jjlee/Local/src/mlcvl/mlkinetics/src/+mlkinetics.
- 	%% It was developed on Matlab 9.0.0.307022 (R2016a) Prerelease for MACI64.
+ 	%% It was developed on Matlab 9.0.0.307022 (R2016a) Prerelease for MACI64.  Copyright 2017 John Joowon Lee.
  	
 
 	properties
@@ -25,8 +25,7 @@ classdef F18DeoxyGlucoseLaif < mlkinetics.AbstractKinetics & mlkinetics.F18
         t0 = 0 % for Cart
         u0 = 0 % for tsc
         v1 = 0.04   
-        
-        sessionData    
+         
         xLabel = 'times/s'
         yLabel = 'activity'
         notes  = ''
@@ -40,20 +39,12 @@ classdef F18DeoxyGlucoseLaif < mlkinetics.AbstractKinetics & mlkinetics.F18
     end
     
     properties (Dependent)
-        baseTitle
         detailedTitle
         mapParams 
         parameters
     end
     
     methods %% GET
-        function bt = get.baseTitle(this)
-            if (isempty(this.sessionData))
-                bt = sprintf('%s %s', class(this), pwd);
-                return
-            end
-            bt = sprintf('%s %s', class(this), this.sessionData.sessionFolder);
-        end
         function dt = get.detailedTitle(this)
             dt = sprintf('%s\nc0 %g, ca %g, cb %g, ce %g, cg %g\nfu %g, k1 %g, k2 %g, k3 %g, k4 %g\nt0 %g, u0 %g, v1 %g\n%s', ...
                          this.baseTitle, ...

@@ -1,8 +1,8 @@
-classdef Test_F18DeoxyGlucoseKinetics < matlab.unittest.TestCase
-	%% TEST_F18DEOXYGLUCOSEKINETICS 
+classdef Test_AbstractF18DeoxyGlucoseKinetics < matlab.unittest.TestCase
+	%% TEST_ABSTRACTF18DEOXYGLUCOSEKINETICS 
 
-	%  Usage:  >> results = run(mlkinetics_unittest.Test_F18DeoxyGlucoseKinetics)
- 	%          >> result  = run(mlkinetics_unittest.Test_F18DeoxyGlucoseKinetics, 'test_dt')
+	%  Usage:  >> results = run(mlkinetics_unittest.Test_AbstractF18DeoxyGlucoseKinetics)
+ 	%          >> result  = run(mlkinetics_unittest.Test_AbstractF18DeoxyGlucoseKinetics, 'test_dt')
  	%  See also:  file:///Applications/Developer/MATLAB_R2014b.app/help/matlab/matlab-unit-test-framework.html
 
 	%  $Revision$
@@ -23,7 +23,7 @@ classdef Test_F18DeoxyGlucoseKinetics < matlab.unittest.TestCase
 		function test_runPowers(this)
             studyd = mlpipeline.StudyDataSingletons.instance('test_powers');
             sessd = studyd.sessionData('studyData', studyd, 'sessionPath', pwd);
-            [~,kmin,k1k3overk2k3] = mlkinetics.F18DeoxyGlucoseKinetics.runPowers(sessd);
+            [~,kmin,k1k3overk2k3] = mlpowers.F18DeoxyGlucoseKinetics.runPowers(sessd);
             
             verifyEqual(kmin, [ 0.045294 0.010439 0.010606 0.000003 ], 'RelTol', 1e-4);
             verifyEqual(k1k3overk2k3, 1.36960975513824, 'RelTol', 1e-4);
