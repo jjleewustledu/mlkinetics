@@ -6,11 +6,54 @@ classdef AbstractGlucoseKinetics < mlkinetics.AbstractKinetics & mlkinetics.IGlu
  	%  last modified $LastChangedDate$ and placed into repository /Users/jjlee/Local/src/mlcvl/mlkinetics/src/+mlkinetics.
  	%% It was developed on Matlab 9.2.0.538062 (R2017a) for MACI64.  Copyright 2017 John Joowon Lee.
  	
+    
+    methods (Abstract)
+        this = prepareTsc(this)
+        this = prepareDta(this)
+    end
+    
 	properties
- 		dta
         dtaNyquist
-        tsc
         tscNyquist
+    end
+    
+    properties (Dependent)
+        hct
+        dta
+        tsc
+    end
+    
+    methods %% GET/SET
+        function g    = get.hct(this)
+            g = this.hct_;
+        end
+        function this = set.hct(this, s)
+            assert(isnumeric(s) && isfinite(s));
+            if (s < 1); s = 100*s; end
+            this.hct_ = s;
+        end
+        function g    = get.dta(this)
+            g = this.dta_;
+        end
+        function this = set.dta(this, s)
+            if (isempty(s))
+                this = this.prepareDta;
+                return
+            end
+            assert(isa(s, 'mlpet.IAifData') || isa(s, 'mlpet.IWellData'));
+            this.dta_ = s;
+        end
+        function g    = get.tsc(this)
+            g = this.tsc_;
+        end
+        function this = set.tsc(this, s)
+            if (isempty(s))
+                this = this.prepareTsc;
+                return
+            end
+            assert(isa(s, 'mlpet.IScannerData'))
+            this.tsc_ = s;
+        end
     end
     
 	methods 		  
@@ -32,7 +75,15 @@ classdef AbstractGlucoseKinetics < mlkinetics.AbstractKinetics & mlkinetics.IGlu
             xlabel(this.xLabel);
             ylabel(sprintf('%s\nrescaled by %g, %g', this.yLabel,  max_dta, max_tsc));
         end
- 	end 
+    end 
+    
+    %% PRIVATE
+    
+    properties (Access = protected)
+        hct_
+        dta_
+        tsc_
+    end
 
 	%  Created with Newcl by John J. Lee after newfcn by Frank Gonzalez-Morphy
  end

@@ -20,12 +20,12 @@ classdef AbstractKinetics < mlbayesian.AbstractMcmcStrategy
     end
     
     methods %% GET
-        function bt = get.baseTitle(this)
+        function g    = get.baseTitle(this)
             if (isempty(this.sessionData))
-                bt = sprintf('%s %s', class(this), pwd);
+                g = sprintf('%s %s', class(this), pwd);
                 return
             end
-            bt = sprintf('%s %s', class(this), this.sessionData.sessionFolder);
+            g = sprintf('%s %s', class(this), this.sessionData.sessionFolder);
         end
     end
 
@@ -156,7 +156,7 @@ classdef AbstractKinetics < mlbayesian.AbstractMcmcStrategy
                 p{iidx} = 1./t*log(t(end)/t(1));
             end
         end
- 	end 
+    end
     
 
 	%  Created with Newcl by John J. Lee after newfcn by Frank Gonzalez-Morphy

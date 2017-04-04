@@ -13,11 +13,6 @@ classdef AbstractF18DeoxyGlucoseKinetics < mlkinetics.AbstractGlucoseKinetics
         LC
     end
     
-    methods (Abstract)
-        prepareTsc(this)
-        prepareDta(this)
-    end
-    
     properties
         fu = 1 % FUDGE
         % Joanne Markham used the notation K_1 = V_B*k_{21}, rate from compartment 1 to 2.
@@ -51,13 +46,13 @@ classdef AbstractF18DeoxyGlucoseKinetics < mlkinetics.AbstractGlucoseKinetics
             N = 10;
             
             % From Powers xlsx "Final Normals WB PET PVC & ETS"
-            m('fu') = struct('fixed', 1, 'min', 0.01,                               'mean', this.fu, 'max',   1);  
-            m('k1') = struct('fixed', 0, 'min', max(1.4951/60 - 0.2*N*this.sk1, 0), 'mean', this.k1, 'max',   6.6234/60   + 5*N*this.sk1);
-            m('k2') = struct('fixed', 0, 'min', max(0.04517/60    - N*this.sk2, 0), 'mean', this.k2, 'max',   1.7332/60   +   N*this.sk2);
-            m('k3') = struct('fixed', 0, 'min', max(0.05827/60    - N*this.sk3, 0), 'mean', this.k3, 'max',   0.41084/60  +   N*this.sk3);
-            m('k4') = struct('fixed', 0, 'min', max(0.0040048/60  - N*this.sk4, 0), 'mean', this.k4, 'max',   0.017819/60 +   N*this.sk4);
-            m('u0') = struct('fixed', 0, 'min', -100,                               'mean', this.u0, 'max', 100);  
-            m('v1') = struct('fixed', 1, 'min', 0.01,                               'mean', this.v1, 'max',   0.1);  
+            m('fu') = struct('fixed', 1, 'min', 0.01,                              'mean', this.fu, 'max',   1);  
+            m('k1') = struct('fixed', 0, 'min', 0.1/60,                            'mean', this.k1, 'max',  10/60);
+            m('k2') = struct('fixed', 0, 'min', max(0.04517/60   - N*this.sk2, 0), 'mean', this.k2, 'max',   1.7332/60   + N*this.sk2);
+            m('k3') = struct('fixed', 0, 'min', max(0.05827/60   - N*this.sk3, 0), 'mean', this.k3, 'max',   0.41084/60  + N*this.sk3);
+            m('k4') = struct('fixed', 0, 'min', max(0.0040048/60 - N*this.sk4, 0), 'mean', this.k4, 'max',   0.017819/60 + N*this.sk4);
+            m('u0') = struct('fixed', 0, 'min', -100,                              'mean', this.u0, 'max', 100);  
+            m('v1') = struct('fixed', 1, 'min', 0.01,                              'mean', this.v1, 'max',   0.1);  
         end
     end
     
@@ -108,50 +103,41 @@ classdef AbstractF18DeoxyGlucoseKinetics < mlkinetics.AbstractGlucoseKinetics
  			this = this@mlkinetics.AbstractGlucoseKinetics();
             
             ip = inputParser;
-            addRequired(ip, 'sessionData', @(x) isa(x, 'mlpipeline.ISessionData'));
-            addParameter(ip, 'mask',       varargin{1}.aparcAsegBinarized('typ','mlfourd.ImagingContext'), ...
-                                           @(x) isa(x, 'mlfourd.ImagingContext') || isempty(x));
-            addParameter(ip, 'hct',        varargin{1}.hct, ...
-                                           @isnumeric);
-            addParameter(ip, 'dta',        [], ...
-                                           @(x) isa(x, 'mlpet.IAifData') || isa(x, 'mlpet.IWellData'));
-            addParameter(ip, 'tsc',        [], ...
-                                           @(x) isa(x, 'mlpet.IScannerData'));
+            addRequired( ip, 'sessionData', @(x) isa(x, 'mlpipeline.ISessionData'));
+            addParameter(ip, 'mask',        varargin{1}.aparcAsegBinarized('typ','mlfourd.ImagingContext'), ...
+                                            @(x) isa(x, 'mlfourd.ImagingContext') || isempty(x));
+            addParameter(ip, 'hct',         varargin{1}.hct);
+            addParameter(ip, 'tsc',         []);
+            addParameter(ip, 'dta',         []);
             parse(ip, varargin{:});
             this.sessionData = ip.Results.sessionData;
-            if (isempty(ip.Results.mask))
-                warning('mlkinetics:parameterIsEmpty', 'AbstractF18DeoxyGlucoseKinetics.mask -> []');
-            end
-            this.mask = ip.Results.mask;
-            this.hct = ip.Results.hct;
-            if (this.hct < 1); this.hct = this.hct*100; end
             assert(strcmp(this.sessionData.tracer, 'FDG'));
-            assert(this.sessionData.attenuationCorrected);
-            
-            this.tsc = ip.Results.tsc;
-            if (isempty(ip.Results.tsc))
-                this.tsc = this.prepareTsc;
-            end
-            this.dta = ip.Results.dta;
-            if (isempty(ip.Results.dta))
-                this.dta = this.prepareDta; % accesses this.tsc; KLUDGE side-effect
-                this.tsc = this.dta.scannerData;
-            end
-            this.independentData  = {ensureRowVector(this.tsc.times)};
-            this.dependentData    = {ensureRowVector(this.tsc.specificActivity)};            
-            this.jeffreysPrior    = this.buildJeffreysPrior;
-            [t,dtaBecq1,tscBecq1,this.u0] = this.interpolateAll( ...
-                this.dta.times, this.dta.specificActivity, this.tsc.times, this.tsc.specificActivity);
-            this.dtaNyquist  = struct('times', t, 'specificActivity', dtaBecq1);
-            this.tscNyquist  = struct('times', t, 'specificActivity', tscBecq1);
+            assert(       this.sessionData.attenuationCorrected);
             this.filepath    = this.sessionData.vLocation;
             this.fileprefix  = sprintf('%s_%s', strrep(class(this), '.', '_'), this.sessionData.parcellation);
+            this.mask        = ip.Results.mask;
+            this.hct         = ip.Results.hct;            
+            this.tsc         = ip.Results.tsc;
+            this.dta         = ip.Results.dta;
+            if (isempty(ip.Results.tsc) && isempty(ip.Results.dta))
+                this.tsc_ = this.dta.scannerData;
+            end
+            
+            this.independentData = {ensureRowVector(this.tsc.times)};
+            this.dependentData   = {ensureRowVector(this.tsc.specificActivity)};            
+            this.jeffreysPrior   = this.buildJeffreysPrior;
+            [t,dtaBecq1,tscBecq1,this.u0] = ...
+                this.interpolateAll( ...
+                    this.dta.times, this.dta.specificActivity, ...
+                    this.tsc.times, this.tsc.specificActivity);
+            this.dtaNyquist      = struct('times', t, 'specificActivity', dtaBecq1);
+            this.tscNyquist      = struct('times', t, 'specificActivity', tscBecq1);
             this.expectedBestFitParams_ = ...
                 [this.fu this.k1 this.k2 this.k3 this.k4 this.u0 this.v1]';
         end        
         
         function [this,lg] = doBayes(this)
-            tic
+            tic          
             
             this = this.estimateParameters;
             this.plotAll;
@@ -302,21 +288,19 @@ classdef AbstractF18DeoxyGlucoseKinetics < mlkinetics.AbstractGlucoseKinetics
         end
         function        writetable(this, varargin)
             ip = inputParser;
-            addParameter(ip, 'fileprefix', this.fqfileprefix, @ischar);
+            addParameter(ip, 'fqfp', this.fqfileprefix, @ischar);
             addParameter(ip, 'Sheet', 1, @isnumeric);
             addParameter(ip, 'Range', 'A3:U3', @ischar);
             addParameter(ip, 'writeHeader', true, @islogical);
-            parse(ip, varargin{:});            
-            if (isempty(this.summary))
-                this = this.load([ip.Results.fileprefix this.filesuffix]);
-            end
+            parse(ip, varargin{:}); 
+            
             summary = this.summary;
             
             if (ip.Results.writeHeader)
                 H = cell2table({'subject', 'visit', 'ROI', 'plasma glu (mg/dL)', 'Hct', 'WB glu (mmol/L)', 'CBV (mL/100g)', ...
                      'k1 (1/s)', 'std(k1)', 'k2 (1/s)', 'std(k2)', 'k3 (1/s)', 'std(k3)', 'k4 (1/s)', 'std(k4)', ...
                      't_offset (s)', 'std(t_offset)', 'chi', 'Kd', 'CMR', 'free', '', 'CTXglu', 'CMRglu', 'free glu'});
-                writetable(H, [ip.Results.fileprefix '.xlsx'], ...
+                writetable(H, [ip.Results.fqfp '.xlsx'], ...
                     'Sheet', ip.Results.Sheet, 'Range', 'A2:Y2', 'WriteVariableNames', false);
             end
             
@@ -327,7 +311,7 @@ classdef AbstractF18DeoxyGlucoseKinetics < mlkinetics.AbstractGlucoseKinetics
             T = cell2table({subjid, v, roi, 90, summary.hct, [], 100*this.v1, ...
                 this.k1, sp(2), this.k2, sp(3), this.k3, sp(4), this.k4, sp(5), this.u0, sp(6), ...
                 summary.chi, summary.Kd, summary.CMR, summary.free});
-            writetable(T, [ip.Results.fileprefix '.xlsx'], ...
+            writetable(T, [ip.Results.fqfp '.xlsx'], ...
                 'Sheet', ip.Results.Sheet, 'Range', ip.Results.Range, 'WriteVariableNames', false);
         end
     end
