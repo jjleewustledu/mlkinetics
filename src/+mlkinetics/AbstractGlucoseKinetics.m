@@ -7,6 +7,11 @@ classdef AbstractGlucoseKinetics < mlkinetics.AbstractKinetics & mlkinetics.IGlu
  	%% It was developed on Matlab 9.2.0.538062 (R2017a) for MACI64.  Copyright 2017 John Joowon Lee.
  	
     
+    methods (Static, Abstract)
+        Cwb = plasma2wb(Cp,  hct, t)
+        Cp  = wb2plasma(Cwb, hct, t)
+    end
+    
     methods (Abstract)
         this = prepareTsc(this)
         this = prepareDta(this)
@@ -18,19 +23,20 @@ classdef AbstractGlucoseKinetics < mlkinetics.AbstractKinetics & mlkinetics.IGlu
     end
     
     properties (Dependent)
+        bloodGlucose
         hct
         dta
         tsc
     end
     
     methods %% GET/SET
-        function g    = get.hct(this)
-            g = this.hct_;
+        function g    = get.bloodGlucose(this)
+            g = this.sessionData.bloodGlucose;
+            g = 0.05551*g;
+            g = this.plasma2wb(g, this.hct, 0);
         end
-        function this = set.hct(this, s)
-            assert(isnumeric(s) && isfinite(s));
-            if (s < 1); s = 100*s; end
-            this.hct_ = s;
+        function g    = get.hct(this)
+            g = this.sessionData.hct;
         end
         function g    = get.dta(this)
             g = this.dta_;

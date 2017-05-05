@@ -93,6 +93,13 @@ classdef AbstractF18DeoxyGlucoseKinetics < mlkinetics.AbstractGlucoseKinetics
             lambda = mlkinetics.AbstractF18DeoxyGlucoseKinetics.rbcOverPlasma(t);
             Cp = Cwb./(1 + hct*(lambda - 1));
         end
+        function Cwb    = plasma2wb(Cp, hct, t)
+            if (hct > 1)
+                hct = hct/100;
+            end
+            lambda = mlkinetics.AbstractF18DeoxyGlucoseKinetics.rbcOverPlasma(t);
+            Cwb = Cp.*(1 + hct*(lambda - 1));
+        end
     end
     
 	methods
@@ -106,7 +113,6 @@ classdef AbstractF18DeoxyGlucoseKinetics < mlkinetics.AbstractGlucoseKinetics
             addRequired( ip, 'sessionData', @(x) isa(x, 'mlpipeline.ISessionData'));
             addParameter(ip, 'mask',        varargin{1}.aparcAsegBinarized('typ','mlfourd.ImagingContext'), ...
                                             @(x) isa(x, 'mlfourd.ImagingContext') || isempty(x));
-            addParameter(ip, 'hct',         varargin{1}.hct);
             addParameter(ip, 'tsc',         []);
             addParameter(ip, 'dta',         []);
             parse(ip, varargin{:});
@@ -116,7 +122,6 @@ classdef AbstractF18DeoxyGlucoseKinetics < mlkinetics.AbstractGlucoseKinetics
             this.filepath    = this.sessionData.vLocation;
             this.fileprefix  = sprintf('%s_%s', strrep(class(this), '.', '_'), this.sessionData.parcellation);
             this.mask        = ip.Results.mask;
-            this.hct         = ip.Results.hct;            
             this.tsc         = ip.Results.tsc;
             this.dta         = ip.Results.dta;
             if (isempty(ip.Results.tsc) && isempty(ip.Results.dta))
@@ -176,7 +181,8 @@ classdef AbstractF18DeoxyGlucoseKinetics < mlkinetics.AbstractGlucoseKinetics
             summary.LC = this.LC;
             summary.chi = summary.kmin(1)*summary.kmin(3)/(summary.kmin(2) + summary.kmin(3));
             summary.Kd = 100*this.v1*summary.kmin(1);
-            summary.CMR = (this.v1/0.01)*(1/summary.LC)*summary.chi;
+            summary.CTX = this.bloodGlucose*summary.Kd;
+            summary.CMR = this.bloodGlucose*(100*this.v1)*(1/summary.LC)*summary.chi;
             summary.free = summary.CMR/(100*summary.kmin(3));    
             summary.maskCount = nan;
             if (~isempty(this.mask))
@@ -206,8 +212,9 @@ classdef AbstractF18DeoxyGlucoseKinetics < mlkinetics.AbstractGlucoseKinetics
             lg.add('LC -> %s\n', mat2str(s.LC));
             lg.add('chi = frac{k_1 k_3}{k_2 + k_3} / min^{-1} -> %s\n', mat2str(s.chi));
             lg.add('Kd = K_1 = V_B k1 / (mL min^{-1} (100g)^{-1}) -> %s\n', mat2str(s.Kd)); 
-            lg.add('CMRglu/[glu] = V_B chi / (mL min^{-1} (100g)^{-1}) -> %s\n', mat2str(s.CMR));
-            lg.add('free glu/[glu] = CMRglu/(100 k3) -> %s\n', mat2str(s.free));
+            lg.add('CTXglu = [glu] K_1 / (umol min^{-1} (100g)^{-1}) -> %s\n', mat2str(s.CTX)); 
+            lg.add('CMRglu = [glu] V_B chi / (umol min^{-1} (100g)^{-1}) -> %s\n', mat2str(s.CMR));
+            lg.add('free glu = CMRglu/(100 k3) / (umol/g) -> %s\n', mat2str(s.free));
             lg.add('mnii.count -> %i\n', s.maskCount);
             lg.add('sessd.parcellation -> %s\n', s.parcellation);
             lg.add('sessd.hct -> %g\n', s.hct);
@@ -290,7 +297,7 @@ classdef AbstractF18DeoxyGlucoseKinetics < mlkinetics.AbstractGlucoseKinetics
             ip = inputParser;
             addParameter(ip, 'fqfp', this.fqfileprefix, @ischar);
             addParameter(ip, 'Sheet', 1, @isnumeric);
-            addParameter(ip, 'Range', 'A3:U3', @ischar);
+            addParameter(ip, 'Range', 'A3:V3', @ischar);
             addParameter(ip, 'writeHeader', true, @islogical);
             parse(ip, varargin{:}); 
             
@@ -299,18 +306,18 @@ classdef AbstractF18DeoxyGlucoseKinetics < mlkinetics.AbstractGlucoseKinetics
             if (ip.Results.writeHeader)
                 H = cell2table({'subject', 'visit', 'ROI', 'plasma glu (mg/dL)', 'Hct', 'WB glu (mmol/L)', 'CBV (mL/100g)', ...
                      'k1 (1/s)', 'std(k1)', 'k2 (1/s)', 'std(k2)', 'k3 (1/s)', 'std(k3)', 'k4 (1/s)', 'std(k4)', ...
-                     't_offset (s)', 'std(t_offset)', 'chi', 'Kd', 'CMR', 'free', '', 'CTXglu', 'CMRglu', 'free glu'});
+                     't_offset (s)', 'std(t_offset)', 'chi', 'Kd', 'CTXglu', 'CMRglu', 'free glucose'});
                 writetable(H, [ip.Results.fqfp '.xlsx'], ...
-                    'Sheet', ip.Results.Sheet, 'Range', 'A2:Y2', 'WriteVariableNames', false);
+                    'Sheet', ip.Results.Sheet, 'Range', 'A2:V2', 'WriteVariableNames', false);
             end
             
             subjid = this.sessionData.sessionFolder;
             sp = summary.stdParams;
             v = this.sessionData.vnumber;
-            roi = this.translateYeo7(this.sessionData.parcellation);
-            T = cell2table({subjid, v, roi, 90, summary.hct, [], 100*this.v1, ...
+            roi = this.translateYeo7(this.sessionData.parcellation); 
+            T = cell2table({subjid, v, roi, this.sessionData.bloodGlucose, summary.hct, this.bloodGlucose, 100*this.v1, ...
                 this.k1, sp(2), this.k2, sp(3), this.k3, sp(4), this.k4, sp(5), this.u0, sp(6), ...
-                summary.chi, summary.Kd, summary.CMR, summary.free});
+                summary.chi, summary.Kd, summary.CTX, summary.CMR, summary.free});
             writetable(T, [ip.Results.fqfp '.xlsx'], ...
                 'Sheet', ip.Results.Sheet, 'Range', ip.Results.Range, 'WriteVariableNames', false);
         end
