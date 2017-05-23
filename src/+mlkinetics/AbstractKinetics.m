@@ -10,12 +10,11 @@ classdef AbstractKinetics < mlbayesian.AbstractMcmcStrategy
  	
     
     properties
-        jeffreysPrior
         mask % for scanner data
         summary
     end
     
-    properties (Dependent)        
+    properties (Dependent)
         baseTitle
     end
     
@@ -37,6 +36,10 @@ classdef AbstractKinetics < mlbayesian.AbstractMcmcStrategy
             %  shifts dta to earlier times to preserve causality.  Dt = t(inflow(tsc)) - t(inflow(dta)) < 0.
             %  Slides dta to inertial-frame of tsc.
             
+            %t1   = ensureRowVector(t1);
+            %A1   = ensureColVector(A1);
+            %t2   = ensureRowVector(t2);
+            %A2   = ensureColVector(A2);
             dt   = 1; % min([timeDifferences(t1) timeDifferences(t2)]) / 2;
             tInf = min([t1 t2]);
             tSup = max([t1 t2]);
@@ -48,7 +51,7 @@ classdef AbstractKinetics < mlbayesian.AbstractMcmcStrategy
             interp1       = AbstractKinetics.slide(pchip(t1,A1,t), t, -Dt); 
             interp2       = pchip(t2,A2,t);            
 
-            function timeDiffs = timeDifferences(times)
+            function timeDiffs = timeDifferences(times) %#ok<DEFNU>
                 timeDiffs = times(2:end) - times(1:end-1);
             end
         end
@@ -95,65 +98,29 @@ classdef AbstractKinetics < mlbayesian.AbstractMcmcStrategy
  			%  Usage:  this = AbstractKinetics()
  			
  			this = this@mlbayesian.AbstractMcmcStrategy(varargin{:});  
-        end        
-        function sse  = sumSquaredErrors(this, p)
-            %% SUMSQUAREDERRORS returns the sum-of-square residuals for all cells of this.dependentData and 
-            %  corresponding this.estimateDataFast.  Compared to AbstractMcmcStrategy.sumSquaredErrors, this 
-            %  overriding implementation weights of the log-likelihood with Jeffrey's prior according to this.independentData.
-            %  See also:  mlbayesian.AbstractMcmcStrategy.sumSquaredErrors, 
-            %             mlkinetics.AbstractKinetics.jeffreysPrior.
-            
-            assert(~isempty(this.jeffreysPrior));
-            p   = num2cell(p);
-            sse = 0;
-            edf = this.estimateDataFast(p{:});
-            for iidx = 1:length(this.dependentData)
-                sse = sse + ...
-                      sum( (this.dependentData{iidx} - edf{iidx}).^2.*this.jeffreysPrior{iidx}./ ...
-                            this.dependentData{iidx} );
-            end
-            if (sse < eps)
-                sse = sse + (1 + rand(1))*eps; 
-            end
-        end
+        end   
         function rsn  = translateYeo7(~, roi)
-            switch (roi)
-                case 'yeo1'
-                    rsn = 'visual';
-                case 'yeo2'
-                    rsn = 'somatomotor';
-                case 'yeo3'
-                    rsn = 'dorsal attention';
-                case 'yeo4'
-                    rsn = 'ventral attention';
-                case 'yeo5'
-                    rsn = 'limbic';
-                case 'yeo6'
-                    rsn = 'frontoparietal';
-                case 'yeo7'
-                    rsn = 'default';
-                otherwise
-                    rsn = roi;
-            end
-        end
-    end
-    
-    %% PROTECTED
-    
-    methods (Access = protected)
-        function p = buildJeffreysPrior(this)
-            %% JEFFREYSPRIOR
-            %  Cf. Gregory, Bayesian Logical Data Analysis for the Physical Sciences, sec. 3.7.1.
-            
-            p = cell(this.independentData);
-            for iidx = 1:length(p)
-                t = this.independentData{iidx};
-                for it = 1:length(t)
-                    if (abs(t(it)) < eps)
-                        t(it) = min(t(t > eps));
-                    end
+            try
+                switch (roi)
+                    case 'yeo1'
+                        rsn = 'visual';
+                    case 'yeo2'
+                        rsn = 'somatomotor';
+                    case 'yeo3'
+                        rsn = 'dorsal attention';
+                    case 'yeo4'
+                        rsn = 'ventral attention';
+                    case 'yeo5'
+                        rsn = 'limbic';
+                    case 'yeo6'
+                        rsn = 'frontoparietal';
+                    case 'yeo7'
+                        rsn = 'default';
+                    otherwise
+                        rsn = roi;
                 end
-                p{iidx} = 1./t*log(t(end)/t(1));
+            catch ME %#ok<NASGU>
+                rsn = '';
             end
         end
     end

@@ -36,18 +36,27 @@ classdef AbstractF18DeoxyGlucoseKinetics < mlkinetics.AbstractGlucoseKinetics
     end
     
     methods %% GET
-        function dt = get.detailedTitle(this)
+        function dt   = get.detailedTitle(this)
             dt = sprintf('%s\nfu %g, k1 %g, k2 %g, k3 %g, k4 %g, u0 %g, v1 %g\n%S', ...
                          this.baseTitle, ...
                          this.fu, this.k1, this.k2, this.k3, this.k4, this.u0, this.v1, this.notes);
         end
-        function m  = get.mapParams(this)
+        function this = set.mapParams(this, m)
+            assert(isa(m, 'containers.Map'));
+            this.mapParams_ = m;
+        end
+        function m    = get.mapParams(this)
+            if (~isempty(this.mapParams_))
+                m = this.mapParams_;
+                return
+            end
+            
             m = containers.Map;
-            N = 10;
+            N = 20;
             
             % From Powers xlsx "Final Normals WB PET PVC & ETS"
             m('fu') = struct('fixed', 1, 'min', 0.01,                              'mean', this.fu, 'max',   1);  
-            m('k1') = struct('fixed', 0, 'min', 0.1/60,                            'mean', this.k1, 'max',  10/60);
+            m('k1') = struct('fixed', 0, 'min', 0.05/60,                           'mean', this.k1, 'max',  20/60);
             m('k2') = struct('fixed', 0, 'min', max(0.04517/60   - N*this.sk2, 0), 'mean', this.k2, 'max',   1.7332/60   + N*this.sk2);
             m('k3') = struct('fixed', 0, 'min', max(0.05827/60   - N*this.sk3, 0), 'mean', this.k3, 'max',   0.41084/60  + N*this.sk3);
             m('k4') = struct('fixed', 0, 'min', max(0.0040048/60 - N*this.sk4, 0), 'mean', this.k4, 'max',   0.017819/60 + N*this.sk4);
@@ -115,11 +124,12 @@ classdef AbstractF18DeoxyGlucoseKinetics < mlkinetics.AbstractGlucoseKinetics
                                             @(x) isa(x, 'mlfourd.ImagingContext') || isempty(x));
             addParameter(ip, 'tsc',         []);
             addParameter(ip, 'dta',         []);
+            addParameter(ip, 'filepath',    varargin{1}.vLocation, @isdir);
             parse(ip, varargin{:});
             this.sessionData = ip.Results.sessionData;
             assert(strcmp(this.sessionData.tracer, 'FDG'));
             assert(       this.sessionData.attenuationCorrected);
-            this.filepath    = this.sessionData.vLocation;
+            this.filepath    = ip.Results.filepath;
             this.fileprefix  = sprintf('%s_%s', strrep(class(this), '.', '_'), this.sessionData.parcellation);
             this.mask        = ip.Results.mask;
             this.tsc         = ip.Results.tsc;
@@ -324,6 +334,10 @@ classdef AbstractF18DeoxyGlucoseKinetics < mlkinetics.AbstractGlucoseKinetics
     end
     
     %% PROTECTED
+    
+    properties (Access = 'protected')
+        mapParams_
+    end
     
     methods (Access = 'protected')
         function plotParArgs(this, par, args, vars)

@@ -46,7 +46,7 @@ classdef AbstractGlucoseKinetics < mlkinetics.AbstractKinetics & mlkinetics.IGlu
                 this = this.prepareDta;
                 return
             end
-            assert(isa(s, 'mlpet.IAifData') || isa(s, 'mlpet.IWellData'));
+            assert(isa(s, 'mlpet.IAifData') || isa(s, 'mlpet.IWellData') || isstruct(s));
             this.dta_ = s;
         end
         function g    = get.tsc(this)
@@ -57,7 +57,7 @@ classdef AbstractGlucoseKinetics < mlkinetics.AbstractKinetics & mlkinetics.IGlu
                 this = this.prepareTsc;
                 return
             end
-            assert(isa(s, 'mlpet.IScannerData'))
+            assert(isa(s, 'mlpet.IScannerData') || isstruct(s))
             this.tsc_ = s;
         end
     end
