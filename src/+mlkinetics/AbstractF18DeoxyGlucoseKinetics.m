@@ -134,6 +134,10 @@ classdef AbstractF18DeoxyGlucoseKinetics < mlkinetics.AbstractGlucoseKinetics
             this.mask        = ip.Results.mask;
             this.tsc         = ip.Results.tsc;
             this.dta         = ip.Results.dta;
+            if (~this.dta.isPlasma)
+                this.dta.specificActivity = ...
+                    mlkinetics.AbstractF18DeoxyGlucoseKinetics.wb2plasma(this.dta.specificActivity, this.hct, this.dta.times);
+            end
             if (isempty(ip.Results.tsc) && isempty(ip.Results.dta))
                 this.tsc_ = this.dta.scannerData;
             end
