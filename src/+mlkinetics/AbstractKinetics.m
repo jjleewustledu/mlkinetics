@@ -99,6 +99,9 @@ classdef AbstractKinetics < mlbayesian.AbstractMcmcStrategy
  			
  			this = this@mlbayesian.AbstractMcmcStrategy(varargin{:});  
         end   
+        function tf   = checkConstructKineticsPassed(this)
+            error('mlkinetics:notImplemented', 'AbstractKinetics.checkConstructKineticsPassed');
+        end
         function rsn  = translateYeo7(~, roi)
             try
                 switch (roi)
