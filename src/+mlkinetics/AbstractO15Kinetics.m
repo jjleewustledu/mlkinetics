@@ -1,46 +1,38 @@
-classdef AbstractGlucoseKinetics < mlkinetics.AbstractKinetics & mlkinetics.IGlucoseKinetics
-	%% ABSTRACTGLUCOSEKINETICS  
+classdef AbstractO15Kinetics < mlkinetics.AbstractKinetics
+	%% ABSTRACTO15KINETICS  
 
 	%  $Revision$
- 	%  was created 24-Mar-2017 16:23:24 by jjlee,
+ 	%  was created 05-Jul-2017 20:04:53 by jjlee,
  	%  last modified $LastChangedDate$ and placed into repository /Users/jjlee/Local/src/mlcvl/mlkinetics/src/+mlkinetics.
  	%% It was developed on Matlab 9.2.0.538062 (R2017a) for MACI64.  Copyright 2017 John Joowon Lee.
  	
-    
-    methods (Static, Abstract)
-        Cwb = plasma2wb(Cp,  hct, t)
-        Cp  = wb2plasma(Cwb, hct, t)
+	properties
+ 		
     end
     
     properties (Dependent)
-        bloodGlucose
         hct
-        dta
+        crv
         tsc
     end
-    
-    methods 
+
+	methods 	
         
         %% GET/SET
         
-        function g    = get.bloodGlucose(this)
-            g = this.sessionData.bloodGlucose;
-            g = 0.05551*g;
-            g = this.plasma2wb(g, this.hct, 0);
-        end
         function g    = get.hct(this)
             g = this.sessionData.hct;
         end
-        function g    = get.dta(this)
-            g = this.dta_;
+        function g    = get.crv(this)
+            g = this.crv_;
         end
-        function this = set.dta(this, s)
+        function this = set.crv(this, s)
             if (isempty(s))
                 this = this.prepareArterialData;
                 return
             end
             assert(isa(s, 'mlpet.IAifData') || isa(s, 'mlpet.IWellData') || isstruct(s));
-            this.dta_ = s;
+            this.crv_ = s;
         end
         function g    = get.tsc(this)
             g = this.tsc_;
@@ -53,34 +45,37 @@ classdef AbstractGlucoseKinetics < mlkinetics.AbstractKinetics & mlkinetics.IGlu
             assert(isa(s, 'mlpet.IScannerData') || isstruct(s))
             this.tsc_ = s;
         end
-    
+        
         %%
         
- 		function this = AbstractGlucoseKinetics(varargin)
- 			%% ABSTRACTGLUCOSEKINETICS
- 			%  Usage:  this = AbstractGlucoseKinetics()
- 			
- 			this = this@mlkinetics.AbstractKinetics(varargin{:}); 
- 		end
         function        plot(this, varargin)
             figure;
-            max_dta = max(     this.dta.specificActivity);
+            max_crv = max(     this.crv.specificActivity);
+            max_dcv = max(     this.dcv.specificActivity);
             max_tsc = max([max(this.tsc.specificActivity)  max(this.itsQpet)]);
-            plot(this.dta.times, this.dta.specificActivity/max_dta, '-o',  ...
-                 this.times{1},  this.itsQpet             /max_tsc, ...
-                 this.tsc.times, this.tsc.specificActivity/max_tsc, '-s', varargin{:});
-            legend('data DTA', 'Bayesian TSC', 'data TSC');  
+            plot(this.crv.times, this.crv.specificActivity/max_crv, '-o',  ...
+                 this.dcv.times, this.dcv.specificActivity/max_dcv, '-s',  ...
+                 this.tsc.times, this.tsc.specificActivity/max_tsc, '-d', ...
+                 this.times{1},  this.itsQpet             /max_tsc, varargin{:});
+            legend('data CRV', 'Bayesian DCV', 'data TSC', 'Bayesian TSC');  
             title(this.detailedTitle, 'Interpreter', 'none');
             xlabel(this.xLabel);
-            ylabel(sprintf('%s\nrescaled by %g, %g', this.yLabel,  max_dta, max_tsc));
+            ylabel(sprintf('%s\nrescaled by %g, %g, %g', this.yLabel,  max_crv, max_dcv, max_tsc));
         end
-    end 
+        
+ 		function this = AbstractO15Kinetics(varargin)
+ 			%% ABSTRACTO15KINETICS
+ 			%  Usage:  this = AbstractO15Kinetics()
+
+ 			this = this@mlkinetics.AbstractKinetics(varargin{:});
+ 		end
+ 	end 
     
     %% PRIVATE
     
     properties (Access = protected)
         hct_
-        dta_
+        crv_
         tsc_
     end
 

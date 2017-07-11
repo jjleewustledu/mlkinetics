@@ -8,10 +8,10 @@ classdef IGlucoseKinetics
  	
 	properties (Abstract) 		
  		dta        % objects w/ fields times, specificActivity
-        dtaNyquist
+        arterialNyquist
         notes
         tsc
-        tscNyquist
+        scannerNyquist
  	end
 
 	methods (Abstract)

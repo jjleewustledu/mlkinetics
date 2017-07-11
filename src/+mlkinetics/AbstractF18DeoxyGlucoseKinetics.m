@@ -35,36 +35,6 @@ classdef AbstractF18DeoxyGlucoseKinetics < mlkinetics.AbstractGlucoseKinetics
         mapParams
     end
     
-    methods %% GET
-        function dt   = get.detailedTitle(this)
-            dt = sprintf('%s\nfu %g, k1 %g, k2 %g, k3 %g, k4 %g, u0 %g, v1 %g\n%S', ...
-                         this.baseTitle, ...
-                         this.fu, this.k1, this.k2, this.k3, this.k4, this.u0, this.v1, this.notes);
-        end
-        function this = set.mapParams(this, m)
-            assert(isa(m, 'containers.Map'));
-            this.mapParams_ = m;
-        end
-        function m    = get.mapParams(this)
-            if (~isempty(this.mapParams_))
-                m = this.mapParams_;
-                return
-            end
-            
-            m = containers.Map;
-            N = 20;
-            
-            % From Powers xlsx "Final Normals WB PET PVC & ETS"
-            m('fu') = struct('fixed', 1, 'min', 0.01,                              'mean', this.fu, 'max',   1);  
-            m('k1') = struct('fixed', 0, 'min', 0.05/60,                           'mean', this.k1, 'max',  20/60);
-            m('k2') = struct('fixed', 0, 'min', max(0.04517/60   - N*this.sk2, 0), 'mean', this.k2, 'max',   1.7332/60   + N*this.sk2);
-            m('k3') = struct('fixed', 0, 'min', max(0.05827/60   - N*this.sk3, 0), 'mean', this.k3, 'max',   0.41084/60  + N*this.sk3);
-            m('k4') = struct('fixed', 0, 'min', max(0.0040048/60 - N*this.sk4, 0), 'mean', this.k4, 'max',   0.017819/60 + N*this.sk4);
-            m('u0') = struct('fixed', 0, 'min', -100,                              'mean', this.u0, 'max', 100);  
-            m('v1') = struct('fixed', 1, 'min', 0.01,                              'mean', this.v1, 'max',   0.1);  
-        end
-    end
-    
     methods (Static)
         function alpha_ = a(k2, k3, k4)
             k234   = k2 + k3 + k4;
@@ -112,6 +82,39 @@ classdef AbstractF18DeoxyGlucoseKinetics < mlkinetics.AbstractGlucoseKinetics
     end
     
 	methods
+        
+        %% GET
+        
+        function dt   = get.detailedTitle(this)
+            dt = sprintf('%s\nfu %g, k1 %g, k2 %g, k3 %g, k4 %g, u0 %g, v1 %g\n%S', ...
+                         this.baseTitle, ...
+                         this.fu, this.k1, this.k2, this.k3, this.k4, this.u0, this.v1, this.notes);
+        end
+        function this = set.mapParams(this, m)
+            assert(isa(m, 'containers.Map'));
+            this.mapParams_ = m;
+        end
+        function m    = get.mapParams(this)
+            if (~isempty(this.mapParams_))
+                m = this.mapParams_;
+                return
+            end
+            
+            m = containers.Map;
+            N = 20;
+            
+            % From Powers xlsx "Final Normals WB PET PVC & ETS"
+            m('fu') = struct('fixed', 1, 'min', 0.01,                              'mean', this.fu, 'max',   1);  
+            m('k1') = struct('fixed', 0, 'min', 0.05/60,                           'mean', this.k1, 'max',  20/60);
+            m('k2') = struct('fixed', 0, 'min', max(0.04517/60   - N*this.sk2, 0), 'mean', this.k2, 'max',   1.7332/60   + N*this.sk2);
+            m('k3') = struct('fixed', 0, 'min', max(0.05827/60   - N*this.sk3, 0), 'mean', this.k3, 'max',   0.41084/60  + N*this.sk3);
+            m('k4') = struct('fixed', 0, 'min', max(0.0040048/60 - N*this.sk4, 0), 'mean', this.k4, 'max',   0.017819/60 + N*this.sk4);
+            m('u0') = struct('fixed', 0, 'min', -100,                              'mean', this.u0, 'max', 100);  
+            m('v1') = struct('fixed', 1, 'min', 0.01,                              'mean', this.v1, 'max',   0.1);  
+        end
+        
+        %%
+        
  		function this = AbstractF18DeoxyGlucoseKinetics(varargin)
  			%% ABSTRACTF18DEOXYGLUCOSEKINETICS
  			%  Usage:  this = AbstractF18DeoxyGlucoseKinetics() 			
@@ -149,39 +152,12 @@ classdef AbstractF18DeoxyGlucoseKinetics < mlkinetics.AbstractGlucoseKinetics
                 this.interpolateAll( ...
                     this.dta.times, this.dta.specificActivity, ...
                     this.tsc.times, this.tsc.specificActivity);
-            this.dtaNyquist      = struct('times', t, 'specificActivity', dtaBecq1);
-            this.tscNyquist      = struct('times', t, 'specificActivity', tscBecq1);
+            this.arterialNyquist      = struct('times', t, 'specificActivity', dtaBecq1);
+            this.scannerNyquist      = struct('times', t, 'specificActivity', tscBecq1);
             this.expectedBestFitParams_ = ...
                 [this.fu this.k1 this.k2 this.k3 this.k4 this.u0 this.v1]';
         end        
         
-        function [this,lg] = doBayes(this)
-            tic          
-            
-            this = this.estimateParameters;
-            this.plotAll;
-            saveFigures(sprintf('fig_%s', this.fileprefix));            
-            this = this.updateSummary;
-            this.save;
-            lg = this.logging;
-            lg.save('w');   
-            this.writetable;
-            fprintf('mlkinetics.AbstractF18DeoxyGlucoseKinetics.doBayes:');
-            fprintf('%s\n', char(lg));                   
-            
-            toc
-        end
-        function [this,lg] = doBayesQuietly(this)
-            this = this.makeQuiet;
-            this = this.estimateParameters;
-            this.plotAll;
-            saveFigures(sprintf('fig_%s', this.fileprefix));            
-            this = this.updateSummary;
-            this.save;
-            this.writetable;
-            lg = this.logging;
-            lg.save('w');
-        end
         function this = updateSummary(this)
             summary.class = class(this);
             summary.datestr = datestr(now, 30);
@@ -225,10 +201,10 @@ classdef AbstractF18DeoxyGlucoseKinetics < mlkinetics.AbstractGlucoseKinetics
             lg.add('[k_1 ... k_4] / min^{-1} -> %s\n', mat2str(s.kmin));
             lg.add('LC -> %s\n', mat2str(s.LC));
             lg.add('chi = frac{k_1 k_3}{k_2 + k_3} / min^{-1} -> %s\n', mat2str(s.chi));
-            lg.add('Kd = K_1 = V_B k1 / (mL min^{-1} (100g)^{-1}) -> %s\n', mat2str(s.Kd)); 
-            lg.add('CTXglu = [glu] K_1 / (umol min^{-1} (100g)^{-1}) -> %s\n', mat2str(s.CTX)); 
-            lg.add('CMRglu = [glu] V_B chi / (umol min^{-1} (100g)^{-1}) -> %s\n', mat2str(s.CMR));
-            lg.add('free glu = CMRglu/(100 k3) / (umol/g) -> %s\n', mat2str(s.free));
+            lg.add('K_d = K_1 = V_B k1 / (mL min^{-1} hg^{-1}) -> %s\n', mat2str(s.Kd)); 
+            lg.add('CTX_{glc} = [glc] K_1 / (\mu mol min^{-1} hg^{-1}) -> %s\n', mat2str(s.CTX)); 
+            lg.add('CMR_{glc} = [glc] V_B chi / (\mu mol min^{-1} hg^{-1}) -> %s\n', mat2str(s.CMR));
+            lg.add('free glc = CMR_{glc}/(100 k_3) / (\mu mol/g) -> %s\n', mat2str(s.free));
             lg.add('mnii.count -> %i\n', s.maskCount);
             lg.add('sessd.parcellation -> %s\n', s.parcellation);
             lg.add('sessd.hct -> %g\n', s.hct);
@@ -242,11 +218,11 @@ classdef AbstractF18DeoxyGlucoseKinetics < mlkinetics.AbstractGlucoseKinetics
         end
         function q2   = itsQ2(this)
             q2 = mlkinetics.AbstractF18DeoxyGlucoseKinetics.q2( ...                
-                this.dtaNyquist.specificActivity, this.k1, this.itsA, this.itsB, this.k4, this.tscNyquist.times);
+                this.arterialNyquist.specificActivity, this.k1, this.itsA, this.itsB, this.k4, this.scannerNyquist.times);
         end
         function q3   = itsQ3(this)
             q3 = mlkinetics.AbstractF18DeoxyGlucoseKinetics.q3( ...                
-                this.dtaNyquist.specificActivity, this.k1, this.itsA, this.itsB, this.k3, this.tscNyquist.times);
+                this.arterialNyquist.specificActivity, this.k1, this.itsA, this.itsB, this.k3, this.scannerNyquist.times);
         end
         function qpet = itsQpet(this)
             qpetCell = this.estimateDataFast( ...
@@ -263,9 +239,9 @@ classdef AbstractF18DeoxyGlucoseKinetics < mlkinetics.AbstractGlucoseKinetics
         function ed   = estimateDataFast(this, fu, k1, k2, k3, k4, u0, v1)
             %% ESTIMATEDATAFAST is used by AbstractBayesianStrategy.theSolver.
             
-            tNyquist = this.tscNyquist.times;
+            tNyquist = this.scannerNyquist.times;
             qNyquist = mlkinetics.AbstractF18DeoxyGlucoseKinetics.qpet( ...
-                this.dtaNyquist.specificActivity, fu, k1, k2, k3, k4, tNyquist, v1);
+                this.arterialNyquist.specificActivity, fu, k1, k2, k3, k4, tNyquist, v1);
             ed{1}    = this.pchip(tNyquist, qNyquist, this.tsc.times, u0);
         end
         function ps   = adjustParams(this, ps)
@@ -370,6 +346,30 @@ classdef AbstractF18DeoxyGlucoseKinetics < mlkinetics.AbstractGlucoseKinetics
                     region]);
             xlabel('time sampling index');
             ylabel(this.yLabel);
+        end
+        function rsn = translateYeo7(~, roi)
+            try
+                switch (roi)
+                    case 'yeo1'
+                        rsn = 'visual';
+                    case 'yeo2'
+                        rsn = 'somatomotor';
+                    case 'yeo3'
+                        rsn = 'dorsal attention';
+                    case 'yeo4'
+                        rsn = 'ventral attention';
+                    case 'yeo5'
+                        rsn = 'limbic';
+                    case 'yeo6'
+                        rsn = 'frontoparietal';
+                    case 'yeo7'
+                        rsn = 'default';
+                    otherwise
+                        rsn = roi;
+                end
+            catch ME %#ok<NASGU>
+                rsn = '';
+            end
         end
     end
     

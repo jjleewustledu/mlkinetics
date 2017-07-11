@@ -9,25 +9,22 @@ classdef AbstractKinetics < mlbayesian.AbstractMcmcStrategy
  	%% It was developed on Matlab 9.0.0.307022 (R2016a) Prerelease for MACI64.  Copyright 2016, 2017 John Joowon Lee.
  	
     
-    properties
-        mask % for scanner data
+    properties      
+        arterialNyquist
+        mask % for scanner data  
+        scannerNyquist
         summary
     end
     
     properties (Dependent)
         baseTitle
+    end    
+    
+    methods (Abstract)
+        this = prepareArterialData(this)
+        this = prepareScannerData(this)        
     end
     
-    methods %% GET
-        function g    = get.baseTitle(this)
-            if (isempty(this.sessionData))
-                g = sprintf('%s %s', class(this), pwd);
-                return
-            end
-            g = sprintf('%s %s', class(this), this.sessionData.sessionFolder);
-        end
-    end
-
 	methods (Static)
         function [t,interp1,interp2, Dt] = interpolateAll(t1, A1, t2, A2)
             %% INTERPOLATEALL interpolates variably sampled {t1 conc1} and {t2 conc2} to {t interp1} and {t interp2}
@@ -92,42 +89,75 @@ classdef AbstractKinetics < mlbayesian.AbstractMcmcStrategy
         end
     end
     
-    methods
+    methods 
+        
+        %% GET
+        
+        function g    = get.baseTitle(this)
+            if (isempty(this.sessionData))
+                g = sprintf('%s in %s', class(this), pwd);
+                return
+            end
+            g = sprintf('%s in %s', class(this), this.sessionData.sessionFolder);
+        end
+        
+        %%
+        
+        function tf   = checkConstructKineticsPassed(this)
+            error('mlkinetics:notImplemented', 'AbstractKinetics.checkConstructKineticsPassed');
+        end
+        function [this,lg] = doBayes(this)
+            tic            
+            this = this.estimateParameters;
+            this.plotAll;
+            saveFigures(sprintf('fig_%s', this.fileprefix));            
+            this = this.updateSummary;
+            this.save;
+            this.writetable;
+            lg = this.logging;
+            lg.save('w');   
+            fprintf('mlkinetics.AbstractKinetics.doBayes:');
+            fprintf('%s\n', char(lg));            
+            toc
+        end
+        function [this,lg] = doBayesQuietly(this)
+            this = this.makeQuiet;
+            this = this.estimateParameters;
+            this.plotAll;
+            saveFigures(sprintf('fig_%s', this.fileprefix));            
+            this = this.updateSummary;
+            this.save;
+            this.writetable;
+            lg = this.logging;
+            lg.save('w');
+        end
+        function this = estimateParameters(this, varargin)
+            ip = inputParser;
+            addOptional(ip, 'mapParams', this.mapParams, @(x) isa(x, 'containers.Map'));
+            parse(ip, varargin{:});
+            
+            this = this.runMcmc(ip.Results.mapParams, 'keysToVerify', this.keysParams_);
+        end
+        function lg   = logging(this) %#ok<STOUT,MANU>
+        end
+        function this = updateSummary(this)
+        end
+        function        writetable(this, varargin) %#ok<INUSD>
+        end
+        
  		function this = AbstractKinetics(varargin)
  			%% ABSTRACTKINETICS
  			%  Usage:  this = AbstractKinetics()
  			
  			this = this@mlbayesian.AbstractMcmcStrategy(varargin{:});  
         end   
-        function tf   = checkConstructKineticsPassed(this)
-            error('mlkinetics:notImplemented', 'AbstractKinetics.checkConstructKineticsPassed');
-        end
-        function rsn  = translateYeo7(~, roi)
-            try
-                switch (roi)
-                    case 'yeo1'
-                        rsn = 'visual';
-                    case 'yeo2'
-                        rsn = 'somatomotor';
-                    case 'yeo3'
-                        rsn = 'dorsal attention';
-                    case 'yeo4'
-                        rsn = 'ventral attention';
-                    case 'yeo5'
-                        rsn = 'limbic';
-                    case 'yeo6'
-                        rsn = 'frontoparietal';
-                    case 'yeo7'
-                        rsn = 'default';
-                    otherwise
-                        rsn = roi;
-                end
-            catch ME %#ok<NASGU>
-                rsn = '';
-            end
-        end
-    end
+    end    
     
+    %% PROTECTED
+    
+    properties (Access = 'protected')
+        keysParams_
+    end
 
 	%  Created with Newcl by John J. Lee after newfcn by Frank Gonzalez-Morphy
  end
