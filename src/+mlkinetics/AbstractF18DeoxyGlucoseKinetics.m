@@ -28,6 +28,8 @@ classdef AbstractF18DeoxyGlucoseKinetics < mlkinetics.AbstractGlucoseKinetics
         sk2 = 0.4505/60
         sk3 = 0.1093/60
         sk4 = 0.004525/60
+        
+        summary
     end
     
     properties (Dependent)
@@ -64,6 +66,9 @@ classdef AbstractF18DeoxyGlucoseKinetics < mlkinetics.AbstractGlucoseKinetics
             q  = AbstractF18DeoxyGlucoseKinetics.q2(Aa, k1, a, b, k4, t) + ...
                  AbstractF18DeoxyGlucoseKinetics.q3(Aa, k1, a, b, k3, t) + ...
                  fu*Aa;
+        end
+        function mdl    = model(varargin)
+            mdl = mlkinetics.AbstractF18DeoxyGlucoseKinetics.qpet(varargin{:});
         end
         function Cp     = wb2plasma(Cwb, hct, t)
             if (hct > 1)
@@ -147,7 +152,6 @@ classdef AbstractF18DeoxyGlucoseKinetics < mlkinetics.AbstractGlucoseKinetics
             
             this.independentData = {ensureRowVector(this.tsc.times)};
             this.dependentData   = {ensureRowVector(this.tsc.specificActivity)};            
-            this.jeffreysPrior   = this.buildJeffreysPrior;
             [t,dtaBecq1,tscBecq1,this.u0] = ...
                 this.interpolateAll( ...
                     this.dta.times, this.dta.specificActivity, ...
@@ -156,34 +160,36 @@ classdef AbstractF18DeoxyGlucoseKinetics < mlkinetics.AbstractGlucoseKinetics
             this.scannerNyquist      = struct('times', t, 'specificActivity', tscBecq1);
             this.expectedBestFitParams_ = ...
                 [this.fu this.k1 this.k2 this.k3 this.k4 this.u0 this.v1]';
+            this.keysParams_ = {'fu' 'k1' 'k2' 'k3' 'k4' 'u0' 'v1'};
+            this.keysArgs_   = {this.fu this.k1 this.k2 this.k3 this.k4 this.u0 this.v1};
         end        
         
         function this = updateSummary(this)
-            summary.class = class(this);
-            summary.datestr = datestr(now, 30);
+            s.class = class(this);
+            s.datestr = datestr(now, 30);
             if (~isempty(this.theSolver))
-                summary.bestFitParams = this.bestFitParams;
-                summary.meanParams = this.meanParams;
-                summary.stdParams  = this.stdParams;
-                summary.sdpar = 60*this.annealingSdpar(2:5);
+                s.bestFitParams = this.bestFitParams;
+                s.meanParams = this.meanParams;
+                s.stdParams  = this.stdParams;
+                s.annealingSdparMin = 60*this.annealingSdpar;
             end
-            summary.kmin = 60*[this.k1 this.k2 this.k3 this.k4];
-            summary.LC = this.LC;
-            summary.chi = summary.kmin(1)*summary.kmin(3)/(summary.kmin(2) + summary.kmin(3));
-            summary.Kd = 100*this.v1*summary.kmin(1);
-            summary.CTX = this.bloodGlucose*summary.Kd;
-            summary.CMR = this.bloodGlucose*(100*this.v1)*(1/summary.LC)*summary.chi;
-            summary.free = summary.CMR/(100*summary.kmin(3));    
-            summary.maskCount = nan;
+            s.kmin = 60*[this.k1 this.k2 this.k3 this.k4];
+            s.LC = this.LC;
+            s.chi = s.kmin(1)*s.kmin(3)/(s.kmin(2) + s.kmin(3));
+            s.Kd = 100*this.v1*s.kmin(1);
+            s.CTX = this.bloodGlucose*s.Kd;
+            s.CMR = this.bloodGlucose*(100*this.v1)*(1/s.LC)*s.chi;
+            s.free = s.CMR/(100*s.kmin(3));    
+            s.maskCount = nan;
             if (~isempty(this.mask))
                 mnii = mlfourd.MaskingNIfTId(this.mask.niftid);
-                summary.maskCount = mnii.count;
+                s.maskCount = mnii.count;
             else
-                summary.maskCount = nan;
+                s.maskCount = nan;
             end
-            summary.parcellation = this.sessionData.parcellation;
-            summary.hct = this.hct;
-            this.summary = summary;
+            s.parcellation = this.sessionData.parcellation;
+            s.hct = this.hct;
+            this.summary = s;
         end
         function lg   = logging(this)
             lg = mlpipeline.Logger(this.fqfileprefix);
@@ -196,7 +202,7 @@ classdef AbstractF18DeoxyGlucoseKinetics < mlkinetics.AbstractGlucoseKinetics
                 lg.add('bestFitParams / s^{-1} -> %s\n', mat2str(s.bestFitParams));
                 lg.add('meanParams / s^{-1} -> %s\n', mat2str(s.meanParams));
                 lg.add('stdParams / s^{-1} -> %s\n', mat2str(s.stdParams));
-                lg.add('std([[k_1 ... k_4]] / min^{-1}) -> %s\n', mat2str(s.sdpar));
+                lg.add('std([[k_1 ... k_4]] / min^{-1}) -> %s\n', mat2str(s.annealingSdparMin));
             end
             lg.add('[k_1 ... k_4] / min^{-1} -> %s\n', mat2str(s.kmin));
             lg.add('LC -> %s\n', mat2str(s.LC));
@@ -225,16 +231,7 @@ classdef AbstractF18DeoxyGlucoseKinetics < mlkinetics.AbstractGlucoseKinetics
                 this.arterialNyquist.specificActivity, this.k1, this.itsA, this.itsB, this.k3, this.scannerNyquist.times);
         end
         function qpet = itsQpet(this)
-            qpetCell = this.estimateDataFast( ...
-                this.fu, this.k1 ,this.k2, this.k3, this.k4, this.u0, this.v1);
-            qpet = qpetCell{1};
-        end
-        function this = estimateParameters(this, varargin)
-            ip = inputParser;
-            addOptional(ip, 'mapParams', this.mapParams, @(x) isa(x, 'containers.Map'));
-            parse(ip, varargin{:});
-            
-            this = this.runMcmc(ip.Results.mapParams, 'keysToVerify', {'fu' 'k1' 'k2' 'k3' 'k4' 'u0' 'v1'});
+            qpet = this.itsModel;
         end
         function ed   = estimateDataFast(this, fu, k1, k2, k3, k4, u0, v1)
             %% ESTIMATEDATAFAST is used by AbstractBayesianStrategy.theSolver.
@@ -291,7 +288,7 @@ classdef AbstractF18DeoxyGlucoseKinetics < mlkinetics.AbstractGlucoseKinetics
             addParameter(ip, 'writeHeader', true, @islogical);
             parse(ip, varargin{:}); 
             
-            summary = this.summary;
+            summ = this.summary;
             
             if (ip.Results.writeHeader)
                 H = cell2table({'subject', 'visit', 'ROI', 'plasma glu (mg/dL)', 'Hct', 'WB glu (mmol/L)', 'CBV (mL/100g)', ...
@@ -302,12 +299,12 @@ classdef AbstractF18DeoxyGlucoseKinetics < mlkinetics.AbstractGlucoseKinetics
             end
             
             subjid = this.sessionData.sessionFolder;
-            sp = summary.stdParams;
+            sp = summ.stdParams;
             v = this.sessionData.vnumber;
             roi = this.translateYeo7(this.sessionData.parcellation); 
-            T = cell2table({subjid, v, roi, this.sessionData.bloodGlucose, summary.hct, this.bloodGlucose, 100*this.v1, ...
+            T = cell2table({subjid, v, roi, this.sessionData.bloodGlucose, summ.hct, this.bloodGlucose, 100*this.v1, ...
                 this.k1, sp(2), this.k2, sp(3), this.k3, sp(4), this.k4, sp(5), this.u0, sp(6), ...
-                summary.chi, summary.Kd, summary.CTX, summary.CMR, summary.free});
+                summ.chi, summ.Kd, summ.CTX, summ.CMR, summ.free});
             writetable(T, [ip.Results.fqfp '.xlsx'], ...
                 'Sheet', ip.Results.Sheet, 'Range', ip.Results.Range, 'WriteVariableNames', false);
         end

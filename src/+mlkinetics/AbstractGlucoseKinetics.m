@@ -8,8 +8,12 @@ classdef AbstractGlucoseKinetics < mlkinetics.AbstractKinetics & mlkinetics.IGlu
  	
     
     methods (Static, Abstract)
-        Cwb = plasma2wb(Cp,  hct, t)
-        Cp  = wb2plasma(Cwb, hct, t)
+        Cwb = plasma2wb(Cp,  hct, ~)
+        Cp  = wb2plasma(Cwb, hct, ~)
+    end
+    
+    properties
+        bloodGlucoseBlinding = true
     end
     
     properties (Dependent)
@@ -24,6 +28,10 @@ classdef AbstractGlucoseKinetics < mlkinetics.AbstractKinetics & mlkinetics.IGlu
         %% GET/SET
         
         function g    = get.bloodGlucose(this)
+            if (this.bloodGlucoseBlinding)
+                g = nan;
+                return
+            end            
             g = this.sessionData.bloodGlucose;
             g = 0.05551*g;
             g = this.plasma2wb(g, this.hct, 0);
@@ -76,7 +84,7 @@ classdef AbstractGlucoseKinetics < mlkinetics.AbstractKinetics & mlkinetics.IGlu
         end
     end 
     
-    %% PRIVATE
+    %% PROTECTED
     
     properties (Access = protected)
         hct_

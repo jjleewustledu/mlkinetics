@@ -13,7 +13,6 @@ classdef AbstractKinetics < mlbayesian.AbstractMcmcStrategy
         arterialNyquist
         mask % for scanner data  
         scannerNyquist
-        summary
     end
     
     properties (Dependent)
@@ -156,7 +155,6 @@ classdef AbstractKinetics < mlbayesian.AbstractMcmcStrategy
     %% PROTECTED
     
     properties (Access = 'protected')
-        keysParams_
     end
 
 	%  Created with Newcl by John J. Lee after newfcn by Frank Gonzalez-Morphy

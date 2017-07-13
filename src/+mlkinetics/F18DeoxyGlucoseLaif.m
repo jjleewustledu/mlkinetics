@@ -337,36 +337,6 @@ classdef F18DeoxyGlucoseLaif < mlkinetics.AbstractKinetics
         end
  	end 
     
-    %% PRIVATE
-    
-    methods (Access = 'private')
-        function plotParArgs(this, par, args, vars)
-            assert(lstrfind(par, properties('mlkinetics.F18DeoxyGlucoseLaif')));
-            assert(iscell(args));
-            assert(isnumeric(vars));
-            figure
-            hold on
-            import mlkinetics.*;
-            plot(0:length(this.times{1})-1, this.itsCart, '--', 'LineWidth', 2)
-            for v = 1:length(args)
-                argsv = args{v};
-                cart = F18DeoxyGlucoseLaif.Cart(argsv{1}, argsv{2}, argsv{3}, argsv{4}, argsv{5}, this.times{1}, argsv{11});
-                qpet = F18DeoxyGlucoseLaif.qpet(cart, argsv{6}, argsv{7}, argsv{8}, argsv{9}, argsv{10}, this.times{1}, argsv{12}, argsv{13});
-                plot(0:length(this.times{1})-1, qpet);
-            end
-            plot(0:length(this.times{1})-1, this.dependentData{1}, ':o', 'LineWidth', 2);
-            title(sprintf('c0 %g, ca %g, cb %g, ce %g, cg %g\nfu %g, k1 %g, k2 %g, k3 %g, k4 %g\nt0 %g, u0 %g, v1 %g', ...
-                          argsv{1},  argsv{2},  argsv{3}, argsv{4}, argsv{5}, ...
-                          argsv{6},  argsv{7},  argsv{8}, argsv{9}, argsv{10}, ...
-                          argsv{11}, argsv{12}, argsv{13}));
-            legend(['laif' ...
-                    cellfun(@(x) sprintf('%s = %g', par, x), num2cell(vars), 'UniformOutput', false) ...
-                    'WB']);
-            xlabel('time sampling index');
-            ylabel(this.yLabel);
-        end
-    end
-    
 	%  Created with Newcl by John J. Lee after newfcn by Frank Gonzalez-Morphy
  end
 
