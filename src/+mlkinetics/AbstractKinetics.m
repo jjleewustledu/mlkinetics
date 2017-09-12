@@ -10,17 +10,15 @@ classdef AbstractKinetics < mlbayesian.AbstractMcmcStrategy
  	
     
     properties      
-        arterialNyquist
         mask % for scanner data  
-        scannerNyquist
-    end
+    end   
     
     properties (Dependent)
-        baseTitle
-    end    
+        scanData
+    end
     
     methods (Abstract)
-        this = prepareArterialData(this)
+        this = prepareAifData(this)
         this = prepareScannerData(this)        
     end
     
@@ -36,18 +34,18 @@ classdef AbstractKinetics < mlbayesian.AbstractMcmcStrategy
             %A1   = ensureColVector(A1);
             %t2   = ensureRowVector(t2);
             %A2   = ensureColVector(A2);
-            dt   = 1; % min([timeDifferences(t1) timeDifferences(t2)]) / 2;
+            dt   = min([timeDifferences(t1) timeDifferences(t2)]) / 8;
             tInf = min([t1 t2]);
             tSup = max([t1 t2]);
             
             import mlkinetics.*;
-            Dt            = AbstractKinetics.lagRadialArtery(t1, A1, t2, A2); % > 0            
+            Dt            = AbstractKinetics.lagCirculation(t1, A1, t2, A2); % > 0            
             [t1,A1,t2,A2] = AbstractKinetics.interpolateBoundaries(t1, A1, t2, A2);                     
             t             = tInf:dt:tSup;
             interp1       = AbstractKinetics.slide(pchip(t1,A1,t), t, -Dt); 
             interp2       = pchip(t2,A2,t);            
 
-            function timeDiffs = timeDifferences(times) %#ok<DEFNU>
+            function timeDiffs = timeDifferences(times)
                 timeDiffs = times(2:end) - times(1:end-1);
             end
         end
@@ -76,12 +74,14 @@ classdef AbstractKinetics < mlbayesian.AbstractMcmcStrategy
         function f    = invs_to_mLmin100g(f)
             f = 100 * 60 * f / mlpet.AutoradiographyBuilder.BRAIN_DENSITY;
         end
-        function Dt   = lagRadialArtery(tdta, dta, ttsc, tsc)
-            [~,idx_max_dta]   = max(dta);
-            dtaFront          = dta(1:idx_max_dta);
+        function Dt   = lagCirculation(tAif, aif, tScanner, scanner)
+            [~,idx_max_dta]   = max(aif);
+            [~,idx_max_tsc]   = max(scanner);
+            dtaFront          = aif(1:idx_max_dta);
+            tscFront          = scanner(1:idx_max_tsc);
             [~,idx_start_dta] = max(dtaFront > 0.01*max(dtaFront));
-            [~,idx_start_tsc] = max(tsc      > 0.01*max(tsc));
-            Dt = tdta(idx_start_dta) - ttsc(idx_start_tsc);
+            [~,idx_start_tsc] = max(tscFront > 0.01*max(tscFront));
+            Dt = tAif(idx_start_dta) - tScanner(idx_start_tsc);
         end
         function f    = mLmin100g_to_invs(f)
             f = mlpet.AutoradiographyBuilder.BRAIN_DENSITY * f / 6000;
@@ -92,20 +92,16 @@ classdef AbstractKinetics < mlbayesian.AbstractMcmcStrategy
         
         %% GET
         
-        function g    = get.baseTitle(this)
-            if (isempty(this.sessionData))
-                g = sprintf('%s in %s', class(this), pwd);
-                return
-            end
-            g = sprintf('%s in %s', class(this), this.sessionData.sessionFolder);
+        function g = get.scanData(this)
+            g = this.scanData_;
         end
         
         %%
         
-        function tf   = checkConstructKineticsPassed(this)
+        function tf        = checkConstructKineticsPassed(this)
             error('mlkinetics:notImplemented', 'AbstractKinetics.checkConstructKineticsPassed');
         end
-        function [this,lg] = doBayes(this)
+        function [this,lg] = doItsBayes(this)
             tic            
             this = this.estimateParameters;
             this.plotAll;
@@ -115,11 +111,11 @@ classdef AbstractKinetics < mlbayesian.AbstractMcmcStrategy
             this.writetable;
             lg = this.logging;
             lg.save('w');   
-            fprintf('mlkinetics.AbstractKinetics.doBayes:');
+            fprintf('%s.doItsBayes:', class(this));
             fprintf('%s\n', char(lg));            
             toc
         end
-        function [this,lg] = doBayesQuietly(this)
+        function [this,lg] = doItsBayesQuietly(this)
             this = this.makeQuiet;
             this = this.estimateParameters;
             this.plotAll;
@@ -130,18 +126,7 @@ classdef AbstractKinetics < mlbayesian.AbstractMcmcStrategy
             lg = this.logging;
             lg.save('w');
         end
-        function this = estimateParameters(this, varargin)
-            ip = inputParser;
-            addOptional(ip, 'mapParams', this.mapParams, @(x) isa(x, 'containers.Map'));
-            parse(ip, varargin{:});
-            
-            this = this.runMcmc(ip.Results.mapParams, 'keysToVerify', this.keysParams_);
-        end
-        function lg   = logging(this) %#ok<STOUT,MANU>
-        end
-        function this = updateSummary(this)
-        end
-        function        writetable(this, varargin) %#ok<INUSD>
+        function             writetable(this, varargin) %#ok<INUSD>
         end
         
  		function this = AbstractKinetics(varargin)
@@ -155,6 +140,7 @@ classdef AbstractKinetics < mlbayesian.AbstractMcmcStrategy
     %% PROTECTED
     
     properties (Access = 'protected')
+        scanData_
     end
 
 	%  Created with Newcl by John J. Lee after newfcn by Frank Gonzalez-Morphy

@@ -40,11 +40,11 @@ classdef AbstractC11GlucoseKinetics < mlkinetics.AbstractGlucoseKinetics
     end
     
     methods (Static)
-        function [this,lg] = godo
+        function [this,lg] = doBayes
             this.filepath = fullfile(getenv('HOME'), 'Local', 'src', 'mlcvl', 'mlkinetics', 'data', '');
             cd(this.filepath);
             this = mlkinetics.AbstractC11GlucoseKinetics({}, {});
-            [this,lg] = this.doBayes;
+            [this,lg] = this.doItsBayes;
         end
         function Q_sampl = model(k04, k12frac, k21, k32, k43, t0, dta, VB, t_sampl)
             t      = dta.timeInterpolants; % use interpolants internally            
@@ -73,45 +73,12 @@ classdef AbstractC11GlucoseKinetics < mlkinetics.AbstractGlucoseKinetics
             Q       = q1_ + q234(1:length(t)); % truncate convolution         
             Q_sampl = pchip(t, Q, t_sampl); % resample interpolants
         end
-        function [k,kmp] = runRegion(pth, snum, varargin)            
-            ip = inputParser;
-            addRequired(ip, 'pth', @isdir);
-            addRequired(ip, 'snum', @isnumeric);
-            addOptional(ip, 'region', '001-true-hypothalamus_on_p8047gluc1', @ischar);
-            parse(ip, pth, snum, varargin{:});
-            
-            import mlpet.*;            
-            tscf = mlarbelaez.GluTFiles2('pnumPath', pth, 'scanIndex', snum, 'region', ip.Results.region);                        
-            dta_ = DTA.load(tscf.dtaFqfilename);
-            tsc_ = TSC.loadGluTFiles(tscf);
-            len  = min(length(dta_.timeInterpolants), length(tsc_.timeInterpolants));           
-            %figure; plot(timeInterp, Ca_, timeInterp, Q_)
-            kmp  = mlkinetics.AbstractC11GlucoseKinetics( ...
-                {tsc_.timeInterpolants(1:len)}, ...
-                {tsc_.becquerelInterpolants(1:len)}, ...
-                dta_, str2pnum(pth), snum, 'Region', ip.Results.region);
-            kmp.tsc_ = tsc_;
-            
-            fprintf('AbstractC11GlucoseKinetics.runRegions.pth  -> %s\n', pth);
-            fprintf('AbstractC11GlucoseKinetics.runRegions.snum -> %i\n', snum);
-            fprintf('AbstractC11GlucoseKinetics.runRegions.region -> %s\n', ip.Results.region);
-            disp(dta_)
-            disp(tsc_)
-            disp(kmp)
-            
-            kmp = kmp.estimateParameters(kmp.mapParams);
-            kmp.plotAll;
-            k   = [kmp.finalParams('k04'), kmp.finalParams('k12frac'), kmp.finalParams('k21'), ...
-                   kmp.finalParams('k32'), kmp.finalParams('k43'), kmp.finalParams('t0')]; 
-               
-            
-        end 
         function this    = simulateMcmc(k04, k12frac, k21, k32, k43, t0, dta, VB, t, mapParams, keysParams)
             mdl = mlkinetics.AbstractC11GlucoseKinetics.model(k04, k12frac, k21, k32, k43, t0, dta, VB, t);
             this = AbstractC11GlucoseKinetics({t}, {mdl});
             this.mapParams_ = mapParams;
             this.keysParams_ = keysParams;
-            [this,lg] = this.doBayes;
+            [this,lg] = this.doItsBayes;
             fprintf('%s\n', char(lg));
         end
         
@@ -187,31 +154,46 @@ classdef AbstractC11GlucoseKinetics < mlkinetics.AbstractGlucoseKinetics
             k = this.FB/this.VB;
         end
         
-        %%
-		
-        function [this,lg] = doBayes(this)
-            tic          
-            
-            this = this.estimateParameters;
-            this.plotAll;
-            saveFigures(sprintf('fig_%s', this.fileprefix));
-            this.save;
-            lg = this.logging;
-            lg.save('w');   
-            fprintf('mlkinetics.AbstractC11GlucoseKinetics.doBayes:');
-            fprintf('%s\n', char(lg));                   
-            
-            toc
-        end   
+        %% 
         
         function this = prepareScannerData(this)
         end
-        function this = prepareArterialData(this)
+        function this = prepareAifData(this)
         end
         function ed   = estimateDataFast(this, k04, k12frac, k21, k32, k43, t0)
             %% ESTIMATEDATAFAST is used by AbstractBayesianStrategy.theSolver.
             
             ed{1} = mlkinetics.AbstractC11GlucoseKinetics.model(k04, k12frac, k21, k32, k43, t0, this.dta, this.VB, this.times{1});
+        end
+        function lg   = logging(this)
+            lg = mlpipeline.Logger(this.fqfileprefix);
+            if (isempty(this.summary))
+                return
+            end
+            s = this.summary;
+            lg.add('\n%s is working in %s\n', mfilename, pwd);
+            lg.add('\begin{alignat*}');
+            if (~isempty(this.theSolver))
+                lg.add('bestFitParams\qty(\qty[k_{04} \text{frac}\qty(k_{12}) k_{21} k_{32} k_{43} t_0]) &-> %s \text{s^{-1}}\n', mat2str(s.bestFitParams));
+                lg.add('meanParams   \qty(\qty[k_{04} \text{frac}\qty(k_{12}) k_{21} k_{32} k_{43} t_0]) &-> %s \text{s^{-1}}\n', mat2str(s.meanParams));
+                lg.add('stdParams    \qty(\qty[k_{04} \text{frac}\qty(k_{12}) k_{21} k_{32} k_{43} t_0]) &-> %s \text{s^{-1}}\n', mat2str(s.stdParams));
+                lg.add('anneal sdpar \qty(\qty[k_{04} \text{frac}\qty(k_{12}) k_{21} k_{32} k_{43} t_0]) &-> %s \text{min^{-1}}\n', mat2str(s.annealingSdparMin));
+            end
+            lg.add('\text{LC}                                                                &-> %s\n', mat2str(s.LC));
+            lg.add('[k_{04} k_{12} k_{21} k_{32} k_{43}]                                     &-> %s \text{min^{-1}}\n', mat2str(s.kmin));
+            lg.add('t_0                                                                      &-> %s \text{s^{-1}}', mat2str(s.t0));
+            lg.add('chi = frac{k_{21} k_{32}}{k_{12} + k_{32}}                               &-> %s \text{min^{-1}}\n', mat2str(s.chi));
+            lg.add('K_d = K_1 = V_B k_{21}                                                   &-> %s \text{mL / (min hg)}\n', mat2str(s.Kd)); 
+            lg.add('\operatornameCTX_{\text{glc}} = \qty[\text{glc}] K_1                     &-> %s \text{\mu mol / (min hg)}\n', mat2str(s.CTX)); 
+            lg.add('\operatorname{CMR}_{\text{glc}} = \qty[\text{glc}]_{\text{WB}} V_B \chi  &-> %s \text{\mu mol / (min hg)}\n', mat2str(s.CMR));
+            lg.add('\text{free glc} = \frac{\operatorname{CMR}_{\text{glc}}}{100 k_{32}}     &-> %s \text{\mu mol / g}\n', mat2str(s.free));
+            lg.add('E_{\text{net}} = \frac{\chi\operatorname{CBV}}{\operatorname{CBV}}       &-> %s\n', mat2str(s.Enet));
+            lg.add('mask count   &-> %i\n', s.maskCount);
+            lg.add('parcellation &-> %s\n', s.parcellation);
+            lg.add('bloodGlucose &-> %s\n', s.bloodGlucose);
+            lg.add('Hct          &-> %g \text{mg/dL}\n', s.hct);
+            lg.add('\end{alignat*}');
+            lg.add('\n');
         end
         function        plotParVars(this, par, vars)
             assert(lstrfind(par, properties(this)));
@@ -250,10 +232,7 @@ classdef AbstractC11GlucoseKinetics < mlkinetics.AbstractGlucoseKinetics
         end   
         function sse  = sumSquaredErrors(this, p)
             %% SUMSQUAREDERRORS returns the sum-of-square residuals for all cells of this.dependentData and 
-            %  corresponding this.estimateDataFast.  Compared to AbstractMcmcStrategy.sumSquaredErrors, this 
-            %  overriding implementation weights of the log-likelihood with Jeffrey's prior according to this.independentData.
-            %  See also:  mlbayesian.AbstractMcmcStrategy.sumSquaredErrors, 
-            %             mlkinetics.AbstractKinetics.jeffreysPrior.
+            %  corresponding this.estimateDataFast.  
             
             p   = num2cell(p);
             sse = 0;
@@ -265,36 +244,6 @@ classdef AbstractC11GlucoseKinetics < mlkinetics.AbstractGlucoseKinetics
             if (sse < 10*eps)
                 sse = sse + (1 + rand(1))*10*eps; 
             end
-        end
-        function lg   = logging(this)
-            lg = mlpipeline.Logger(this.fqfileprefix);
-            if (isempty(this.summary))
-                return
-            end
-            s = this.summary;
-            lg.add('\n%s is working in %s\n', mfilename, pwd);
-            lg.add('\begin{alignat*}');
-            if (~isempty(this.theSolver))
-                lg.add('bestFitParams\qty(\qty[k_{04} \text{frac}\qty(k_{12}) k_{21} k_{32} k_{43} t_0]) &-> %s \text{s^{-1}}\n', mat2str(s.bestFitParams));
-                lg.add('meanParams   \qty(\qty[k_{04} \text{frac}\qty(k_{12}) k_{21} k_{32} k_{43} t_0]) &-> %s \text{s^{-1}}\n', mat2str(s.meanParams));
-                lg.add('stdParams    \qty(\qty[k_{04} \text{frac}\qty(k_{12}) k_{21} k_{32} k_{43} t_0]) &-> %s \text{s^{-1}}\n', mat2str(s.stdParams));
-                lg.add('anneal sdpar \qty(\qty[k_{04} \text{frac}\qty(k_{12}) k_{21} k_{32} k_{43} t_0]) &-> %s \text{min^{-1}}\n', mat2str(s.annealingSdparMin));
-            end
-            lg.add('\text{LC}                                                                &-> %s\n', mat2str(s.LC));
-            lg.add('[k_{04} k_{12} k_{21} k_{32} k_{43}]                                     &-> %s \text{min^{-1}}\n', mat2str(s.kmin));
-            lg.add('t_0                                                                      &-> %s \text{s^{-1}}', mat2str(s.t0));
-            lg.add('chi = frac{k_{21} k_{32}}{k_{12} + k_{32}}                               &-> %s \text{min^{-1}}\n', mat2str(s.chi));
-            lg.add('K_d = K_1 = V_B k_{21}                                                   &-> %s \text{mL / (min hg)}\n', mat2str(s.Kd)); 
-            lg.add('\operatornameCTX_{\text{glc}} = \qty[\text{glc}] K_1                     &-> %s \text{\mu mol / (min hg)}\n', mat2str(s.CTX)); 
-            lg.add('\operatorname{CMR}_{\text{glc}} = \qty[\text{glc}]_{\text{WB}} V_B \chi  &-> %s \text{\mu mol / (min hg)}\n', mat2str(s.CMR));
-            lg.add('\text{free glc} = \frac{\operatorname{CMR}_{\text{glc}}}{100 k_{32}}     &-> %s \text{\mu mol / g}\n', mat2str(s.free));
-            lg.add('E_{\text{net}} = \frac{\chi\operatorname{CBV}}{\operatorname{CBV}}       &-> %s\n', mat2str(s.Enet));
-            lg.add('mask count   &-> %i\n', s.maskCount);
-            lg.add('parcellation &-> %s\n', s.parcellation);
-            lg.add('bloodGlucose &-> %s\n', s.bloodGlucose);
-            lg.add('Hct          &-> %g \text{mg/dL}\n', s.hct);
-            lg.add('\end{alignat*}');
-            lg.add('\n');
         end
         function this = updateSummary(this)
             s.class = class(this);
@@ -337,22 +286,20 @@ classdef AbstractC11GlucoseKinetics < mlkinetics.AbstractGlucoseKinetics
             ip.KeepUnmatched = true;
             addRequired(ip, 't', @iscell);
             addRequired(ip, 'y', @iscell);
-            addRequired(ip, 'dta', @(x) isa(x, 'mlpet.IWellData'));
+            addRequired(ip, 'dta', @(x) isa(x, 'mlpet.IWellData') || isa(x, 'mlpet.IAifData'));
             addRequired(ip, 'pnum', @(x) lstrfind(x, 'p') | lstrfind(x, 'M'));
             addRequired(ip, 'snum', @isnumeric);
-            addParameter(ip, 'Region', '', @ischar);
+            addParameter(ip, 'region', '', @ischar);
             parse(ip, t, y, dta, pnum, snum, varargin{:});
             
             this.dta       = ip.Results.dta;
             this.pnumber   = ip.Results.pnum;
             this.scanIndex = ip.Results.snum;
-            this.region    = ip.Results.Region;            
+            this.region    = ip.Results.region;            
             this.k04       = this.K04;            
             
             this.keysParams_ = {'k04' 'k12frac' 'k21' 'k32' 'k43' 't0'};
             this.keysArgs_   = {this.k04 this.k12frac this.k21 this.k32 this.k43 this.t0};
-            this.expectedBestFitParams_ = ...
-                [this.k04 this.k12frac this.k21 this.k32 this.k43 this.t0];
  		end
  	end 
 
@@ -360,7 +307,6 @@ classdef AbstractC11GlucoseKinetics < mlkinetics.AbstractGlucoseKinetics
 
     properties (Access = 'protected')
         gluTxlsx_     
-        mapParams_
     end
     
     methods (Access = 'protected')

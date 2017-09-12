@@ -29,6 +29,8 @@ classdef AbstractF18DeoxyGlucoseKinetics < mlkinetics.AbstractGlucoseKinetics
         sk3 = 0.1093/60
         sk4 = 0.004525/60
         
+        arterialNyquist
+        scannerNyquist
         summary
     end
     
@@ -119,51 +121,7 @@ classdef AbstractF18DeoxyGlucoseKinetics < mlkinetics.AbstractGlucoseKinetics
         end
         
         %%
-        
- 		function this = AbstractF18DeoxyGlucoseKinetics(varargin)
- 			%% ABSTRACTF18DEOXYGLUCOSEKINETICS
- 			%  Usage:  this = AbstractF18DeoxyGlucoseKinetics() 			
- 			
- 			this = this@mlkinetics.AbstractGlucoseKinetics();
-            
-            ip = inputParser;
-            addRequired( ip, 'sessionData', @(x) isa(x, 'mlpipeline.ISessionData'));
-            addParameter(ip, 'mask',        varargin{1}.aparcAsegBinarized('typ','mlfourd.ImagingContext'), ...
-                                            @(x) isa(x, 'mlfourd.ImagingContext') || isempty(x));
-            addParameter(ip, 'tsc',         []);
-            addParameter(ip, 'dta',         []);
-            addParameter(ip, 'filepath',    varargin{1}.vLocation, @isdir);
-            parse(ip, varargin{:});
-            this.sessionData = ip.Results.sessionData;
-            assert(strcmp(this.sessionData.tracer, 'FDG'));
-            assert(       this.sessionData.attenuationCorrected);
-            this.filepath    = ip.Results.filepath;
-            this.fileprefix  = sprintf('%s_%s', strrep(class(this), '.', '_'), this.sessionData.parcellation);
-            this.mask        = ip.Results.mask;
-            this.tsc         = ip.Results.tsc;
-            this.dta         = ip.Results.dta;
-            if (~this.dta.isPlasma)
-                this.dta.specificActivity = ...
-                    mlkinetics.AbstractF18DeoxyGlucoseKinetics.wb2plasma(this.dta.specificActivity, this.hct, this.dta.times);
-            end
-            if (isempty(ip.Results.tsc) && isempty(ip.Results.dta))
-                this.tsc_ = this.dta.scannerData;
-            end
-            
-            this.independentData = {ensureRowVector(this.tsc.times)};
-            this.dependentData   = {ensureRowVector(this.tsc.specificActivity)};            
-            [t,dtaBecq1,tscBecq1,this.u0] = ...
-                this.interpolateAll( ...
-                    this.dta.times, this.dta.specificActivity, ...
-                    this.tsc.times, this.tsc.specificActivity);
-            this.arterialNyquist      = struct('times', t, 'specificActivity', dtaBecq1);
-            this.scannerNyquist      = struct('times', t, 'specificActivity', tscBecq1);
-            this.expectedBestFitParams_ = ...
-                [this.fu this.k1 this.k2 this.k3 this.k4 this.u0 this.v1]';
-            this.keysParams_ = {'fu' 'k1' 'k2' 'k3' 'k4' 'u0' 'v1'};
-            this.keysArgs_   = {this.fu this.k1 this.k2 this.k3 this.k4 this.u0 this.v1};
-        end        
-        
+         
         function this = updateSummary(this)
             s.class = class(this);
             s.datestr = datestr(now, 30);
@@ -230,8 +188,9 @@ classdef AbstractF18DeoxyGlucoseKinetics < mlkinetics.AbstractGlucoseKinetics
             q3 = mlkinetics.AbstractF18DeoxyGlucoseKinetics.q3( ...                
                 this.arterialNyquist.specificActivity, this.k1, this.itsA, this.itsB, this.k3, this.scannerNyquist.times);
         end
-        function qpet = itsQpet(this)
-            qpet = this.itsModel;
+        function mdl  = itsQpet(this)
+            mdlCell = this.estimateDataFast(this.keysArgs_);
+            mdl = mdlCell{1};
         end
         function ed   = estimateDataFast(this, fu, k1, k2, k3, k4, u0, v1)
             %% ESTIMATEDATAFAST is used by AbstractBayesianStrategy.theSolver.
@@ -302,18 +261,61 @@ classdef AbstractF18DeoxyGlucoseKinetics < mlkinetics.AbstractGlucoseKinetics
             sp = summ.stdParams;
             v = this.sessionData.vnumber;
             roi = this.translateYeo7(this.sessionData.parcellation); 
-            T = cell2table({subjid, v, roi, this.sessionData.bloodGlucose, summ.hct, this.bloodGlucose, 100*this.v1, ...
+            T = cell2table({subjid, v, roi, this.sessionData.plasmaGlucose, summ.hct, this.bloodGlucose, 100*this.v1, ...
                 this.k1, sp(2), this.k2, sp(3), this.k3, sp(4), this.k4, sp(5), this.u0, sp(6), ...
                 summ.chi, summ.Kd, summ.CTX, summ.CMR, summ.free});
             writetable(T, [ip.Results.fqfp '.xlsx'], ...
                 'Sheet', ip.Results.Sheet, 'Range', ip.Results.Range, 'WriteVariableNames', false);
-        end
+        end   
+        
+ 		function this = AbstractF18DeoxyGlucoseKinetics(varargin)
+ 			%% ABSTRACTF18DEOXYGLUCOSEKINETICS
+ 			%  Usage:  this = AbstractF18DeoxyGlucoseKinetics() 			
+ 			
+ 			this = this@mlkinetics.AbstractGlucoseKinetics();
+            
+            ip = inputParser;
+            addRequired( ip, 'sessionData', @(x) isa(x, 'mlpipeline.ISessionData'));
+            addParameter(ip, 'mask',        varargin{1}.aparcAsegBinarized('typ','mlfourd.ImagingContext'), ...
+                                            @(x) isa(x, 'mlfourd.ImagingContext') || isempty(x));
+            addParameter(ip, 'tsc',         []);
+            addParameter(ip, 'dta',         []);
+            addParameter(ip, 'filepath',    varargin{1}.vLocation, @isdir);
+            parse(ip, varargin{:});
+            this.sessionData = ip.Results.sessionData;
+            assert(strcmp(this.sessionData.tracer, 'FDG'));
+            assert(       this.sessionData.attenuationCorrected);
+            this.filepath    = ip.Results.filepath;
+            this.fileprefix  = sprintf('%s_%s', strrep(class(this), '.', '_'), this.sessionData.parcellation);
+            this.mask        = ip.Results.mask;
+            this.tsc         = ip.Results.tsc;
+            this.dta         = ip.Results.dta;
+            if (~this.dta.isPlasma)
+                this.dta.specificActivity = ...
+                    mlkinetics.AbstractF18DeoxyGlucoseKinetics.wb2plasma(this.dta.specificActivity, this.hct, this.dta.times);
+            end
+            if (isempty(ip.Results.tsc) && isempty(ip.Results.dta))
+                this.tsc_ = this.dta.scannerData;
+            end
+            
+            this.independentData = {ensureRowVector(this.tsc.times)};
+            this.dependentData   = {ensureRowVector(this.tsc.specificActivity)};            
+            [t,dtaBecq1,tscBecq1,this.u0] = ...
+                this.interpolateAll( ...
+                    this.dta.times, this.dta.specificActivity, ...
+                    this.tsc.times, this.tsc.specificActivity);
+            this.arterialNyquist      = struct('times', t, 'specificActivity', dtaBecq1);
+            this.scannerNyquist      = struct('times', t, 'specificActivity', tscBecq1);
+            this.keysParams_ = {'fu' 'k1' 'k2' 'k3' 'k4' 'u0' 'v1'};
+            this.keysArgs_   = {this.fu this.k1 this.k2 this.k3 this.k4 this.u0 this.v1};            
+            this = this.buildJeffreysPrior;
+        end        
+ 
     end
     
     %% PROTECTED
     
     properties (Access = 'protected')
-        mapParams_
     end
     
     methods (Access = 'protected')

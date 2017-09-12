@@ -1,4 +1,4 @@
-classdef AbstractGlucoseKinetics < mlkinetics.AbstractKinetics & mlkinetics.IGlucoseKinetics
+classdef AbstractGlucoseKinetics < mlkinetics.AbstractKinetics
 	%% ABSTRACTGLUCOSEKINETICS  
 
 	%  $Revision$
@@ -32,8 +32,8 @@ classdef AbstractGlucoseKinetics < mlkinetics.AbstractKinetics & mlkinetics.IGlu
                 g = nan;
                 return
             end            
-            g = this.sessionData.bloodGlucose;
-            g = 0.05551*g;
+            g = this.sessionData.plasmaGlucose;
+            g = 0.05551*g; % to SI
             g = this.plasma2wb(g, this.hct, 0);
         end
         function g    = get.hct(this)
@@ -44,7 +44,7 @@ classdef AbstractGlucoseKinetics < mlkinetics.AbstractKinetics & mlkinetics.IGlu
         end
         function this = set.dta(this, s)
             if (isempty(s))
-                this = this.prepareArterialData;
+                this = this.prepareAifData;
                 return
             end
             assert(isa(s, 'mlpet.IAifData') || isa(s, 'mlpet.IWellData') || isstruct(s));
