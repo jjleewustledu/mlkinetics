@@ -93,9 +93,9 @@ classdef AbstractF18DeoxyGlucoseKinetics < mlkinetics.AbstractGlucoseKinetics
         %% GET
         
         function dt   = get.detailedTitle(this)
-            dt = sprintf('%s\nfu %g, k1 %g, k2 %g, k3 %g, k4 %g, u0 %g, v1 %g\n%S', ...
+            dt = sprintf('%s\nLC %g, fu %g, k1 %g, k2 %g, k3 %g, k4 %g, u0 %g, v1 %g\n%S', ...
                          this.baseTitle, ...
-                         this.fu, this.k1, this.k2, this.k3, this.k4, this.u0, this.v1, this.notes);
+                         this.LC, this.fu, this.k1, this.k2, this.k3, this.k4, this.u0, this.v1, this.notes);
         end
         function this = set.mapParams(this, m)
             assert(isa(m, 'containers.Map'));

@@ -39,8 +39,8 @@ classdef AbstractKinetics < mlbayesian.AbstractMcmcStrategy
             tSup = max([t1 t2]);
             
             import mlkinetics.*;
-            Dt            = AbstractKinetics.lagCirculation(t1, A1, t2, A2); % > 0            
-            [t1,A1,t2,A2] = AbstractKinetics.interpolateBoundaries(t1, A1, t2, A2);                     
+            Dt            = timeSeriesDt(t1, A1, t2, A2); % > 0            
+            [t1,A1,t2,A2] = interpolateBoundaries(t1, A1, t2, A2);                     
             t             = tInf:dt:tSup;
             interp1       = AbstractKinetics.slide(pchip(t1,A1,t), t, -Dt); 
             interp2       = pchip(t2,A2,t);            
@@ -49,39 +49,8 @@ classdef AbstractKinetics < mlbayesian.AbstractMcmcStrategy
                 timeDiffs = times(2:end) - times(1:end-1);
             end
         end
-        function [t1,A1,t2,A2] = interpolateBoundaries(t1, A1, t2, A2)
-            %% INTERPOLATEBOUNDARIES prepends or appends time and concentration datapoints to manage boundaries
-            %  when invoking pchip.  The first or last times and concentrations are repeated as needed to fill
-            %  boundary values.
-            
-            if (t1(1) < t2(1))
-                t2    = [t1(1)    t2];
-                A2 = [A2(1) A2];
-            end
-            if (t1(1) > t2(1))                
-                t1    = [t2(1)    t1];
-                A1 = [A1(1) A1];
-            end
-            if (t1(end) < t2(end))
-                t1 =    [t1    t2(end)];
-                A1 = [A1 A1(end)];
-            end
-            if (t1(end) > t2(end))
-                t2 =    [t2    t1(end)];
-                A2 = [A2 A2(end)];
-            end
-        end
         function f    = invs_to_mLmin100g(f)
             f = 100 * 60 * f / mlpet.AutoradiographyBuilder.BRAIN_DENSITY;
-        end
-        function Dt   = lagCirculation(tAif, aif, tScanner, scanner)
-            [~,idx_max_dta]   = max(aif);
-            [~,idx_max_tsc]   = max(scanner);
-            dtaFront          = aif(1:idx_max_dta);
-            tscFront          = scanner(1:idx_max_tsc);
-            [~,idx_start_dta] = max(dtaFront > 0.01*max(dtaFront));
-            [~,idx_start_tsc] = max(tscFront > 0.01*max(tscFront));
-            Dt = tAif(idx_start_dta) - tScanner(idx_start_tsc);
         end
         function f    = mLmin100g_to_invs(f)
             f = mlpet.AutoradiographyBuilder.BRAIN_DENSITY * f / 6000;
@@ -104,7 +73,7 @@ classdef AbstractKinetics < mlbayesian.AbstractMcmcStrategy
         function [this,lg] = doItsBayes(this)
             tic            
             this = this.estimateParameters;
-            this.plotAll;
+            this.plot;
             saveFigures(sprintf('fig_%s', this.fileprefix));            
             this = this.updateSummary;
             this.save;
@@ -118,7 +87,7 @@ classdef AbstractKinetics < mlbayesian.AbstractMcmcStrategy
         function [this,lg] = doItsBayesQuietly(this)
             this = this.makeQuiet;
             this = this.estimateParameters;
-            this.plotAll;
+            this.plot;
             saveFigures(sprintf('fig_%s', this.fileprefix));            
             this = this.updateSummary;
             this.save;
