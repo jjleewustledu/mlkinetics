@@ -41,7 +41,7 @@ classdef AbstractC11GlucoseKinetics < mlkinetics.AbstractGlucoseKinetics
     
     methods (Static)
         function [this,lg] = doBayes
-            this.filepath = fullfile(getenv('HOME'), 'Local', 'src', 'mlcvl', 'mlkinetics', 'data', '');
+            this.filepath = fullfile(getenv('HOME'), 'MATLAB-Drive', 'mlkinetics', 'data', '');
             cd(this.filepath);
             this = mlkinetics.AbstractC11GlucoseKinetics({}, {});
             [this,lg] = this.doItsBayes;

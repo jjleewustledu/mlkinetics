@@ -49,10 +49,10 @@ classdef Test_KineticsFacade < matlab.unittest.TestCase
             g = fullfile(this.subjectsDir, 'mm01-007_p7686_2010aug20', '');
         end
         function g = get.plotParameters_mat(~)
-            g = fullfile(getenv('SRCDIR'), 'mlcvl/mlkinetics/test/+mlkinetics_unittest', 'plotParameters.mat');
+            g = fullfile(getenv('HOME'), 'MATLAB-Drive/mlkinetics/test/+mlkinetics_unittest', 'plotParameters.mat');
         end
         function g = get.plotGroupParameters_mat(~)
-            g = fullfile(getenv('SRCDIR'), 'mlcvl/mlkinetics/test/+mlkinetics_unittest', 'plotGroupParameters.mat');
+            g = fullfile(getenv('HOME'), 'MATLAB-Drive/mlkinetics/test/+mlkinetics_unittest', 'plotGroupParameters.mat');
         end
     end
 

@@ -259,7 +259,7 @@ classdef AbstractO15Kinetics < mlkinetics.AbstractKinetics
             ip = inputParser;
             ip.KeepUnmatched = true;
             addParameter(ip, 'kernelBestFile', ...
-                fullfile(getenv('HOME'), 'Local', 'src', 'mlcvl', 'mlarbelaez', 'data', 'kernelBest.mat'), ...
+                fullfile(getenv('HOME'), 'MATLAB-Drive', 'mlarbelaez', 'data', 'kernelBest.mat'), ...
                 @(x) lexist(x, 'file'));
             addParameter(ip, 'kernelRange', 13:37, @isnumeric);
             addParameter(ip, 'psModel', true, @islogical);
@@ -323,7 +323,7 @@ classdef AbstractO15Kinetics < mlkinetics.AbstractKinetics
     
     methods (Static, Access = private)
         function krnl = loadKernels
-            mat         = fullfile(getenv('HOME'), 'Local', 'src', 'mlcvl', 'mlarbelaez', 'data', 'kernelBest.mat');
+            mat         = fullfile(getenv('HOME'), 'MATLAB-Drive', 'mlarbelaez', 'data', 'kernelBest.mat');
             assert(lexist(mat, 'file'));
             load(mat);
             krnl        = zeros(size(kernelBest));
