@@ -14,14 +14,14 @@ classdef AbstractF18DeoxyGlucoseKinetics < mlkinetics.AbstractGlucoseKinetics
     end
     
     properties
-        fu = 1 % FUDGE
+        fu = 0.02 % recirculation fraction
         % Joanne Markham used the notation K_1 = V_B*k_{21}, rate from compartment 1 to 2.
         % Mean values from Powers xlsx "Final Normals WB PET PVC & ETS"
-        k1 = 3.946/60
-        k2 = 0.3093/60
-        k3 = 0.1862/60
-        k4 = 0.01382/60
-        u0 = 0 % offset of scanner data w.r.t. blood sampling data
+        k1 = 0.012474 %3.946/60
+        k2 = 0.002699 %0.3093/60
+        k3 = 0.001255 %0.1862/60
+        k4 = 0.000436 %0.01382/60
+        u0 = -13      %0 % offset of scanner data w.r.t. blood sampling data
         v1 = 0.0383
         
         sk1 = 1.254/60
@@ -40,37 +40,11 @@ classdef AbstractF18DeoxyGlucoseKinetics < mlkinetics.AbstractGlucoseKinetics
     end
     
     methods (Static)
-        function alpha_ = a(k2, k3, k4)
-            k234   = k2 + k3 + k4;
-            alpha_ = k234 - sqrt(k234^2 - 4*k2*k4);
-            alpha_ = alpha_/2;
-        end
-        function beta_  = b(k2, k3, k4)
-            k234  = k2 + k3 + k4;
-            beta_ = k234 + sqrt(k234^2 - 4*k2*k4);
-            beta_ = beta_/2;
-        end
-        function q      = q2(Aa, k1, a, b, k4, t)
-            scale = k1/(b - a);
-            q = scale * conv((k4 - a)*exp(-a*t) + (b - k4)*exp(-b*t), Aa);
-            q = q(1:length(t));
-        end
-        function q      = q3(Aa, k1, a, b, k3, t)
-            scale = k3*k1/(b - a);
-            q = scale * conv(exp(-a*t) - exp(-b*t), Aa);
-            q = q(1:length(t));
-        end
-        function q      = qpet(Aa, fu, k1, k2, k3, k4, t, v1)
-            import mlkinetics.*;
-            Aa = v1*Aa;
-            a  = AbstractF18DeoxyGlucoseKinetics.a(k2, k3, k4);
-            b  = AbstractF18DeoxyGlucoseKinetics.b(k2, k3, k4);
-            q  = AbstractF18DeoxyGlucoseKinetics.q2(Aa, k1, a, b, k4, t) + ...
-                 AbstractF18DeoxyGlucoseKinetics.q3(Aa, k1, a, b, k3, t) + ...
-                 fu*Aa;
+        function q      = qpet(Aa, fu, k1, k2, k3, k4, t, v1)   
+            q = qFDG_mex(Aa, fu, k1, k2, k3, k4, t, v1);
         end
         function mdl    = model(varargin)
-            mdl = mlkinetics.AbstractF18DeoxyGlucoseKinetics.qpet(varargin{:});
+            mdl = qFDG_mex(varargin{:});
         end
         function Cp     = wb2plasma(Cwb, hct, t)
             if (hct > 1)
@@ -166,37 +140,23 @@ classdef AbstractF18DeoxyGlucoseKinetics < mlkinetics.AbstractGlucoseKinetics
             lg.add('LC -> %s\n', mat2str(s.LC));
             lg.add('chi = frac{k_1 k_3}{k_2 + k_3} / min^{-1} -> %s\n', mat2str(s.chi));
             lg.add('K_d = K_1 = V_B k1 / (mL min^{-1} hg^{-1}) -> %s\n', mat2str(s.Kd)); 
-            lg.add('CTX_{glc} = [glc] K_1 / (\mu mol min^{-1} hg^{-1}) -> %s\n', mat2str(s.CTX)); 
-            lg.add('CMR_{glc} = [glc] V_B chi / (\mu mol min^{-1} hg^{-1}) -> %s\n', mat2str(s.CMR));
-            lg.add('free glc = CMR_{glc}/(100 k_3) / (\mu mol/g) -> %s\n', mat2str(s.free));
+            lg.add('CTX_{glc} = [glc] K_1 / (\\mu mol min^{-1} hg^{-1}) -> %s\n', mat2str(s.CTX)); 
+            lg.add('CMR_{glc} = [glc] V_B chi / (\\mu mol min^{-1} hg^{-1}) -> %s\n', mat2str(s.CMR));
+            lg.add('free glc = CMR_{glc}/(100 k_3) / (\\mu mol/g) -> %s\n', mat2str(s.free));
             lg.add('mnii.count -> %i\n', s.maskCount);
             lg.add('sessd.parcellation -> %s\n', s.parcellation);
             lg.add('sessd.hct -> %g\n', s.hct);
             lg.add('\n');
         end
-        function a    = itsA(this)
-            a = mlkinetics.AbstractF18DeoxyGlucoseKinetics.a(this.k2, this.k3, this.k4);
-        end
-        function b    = itsB(this)
-            b = mlkinetics.AbstractF18DeoxyGlucoseKinetics.b(this.k2, this.k3, this.k4);
-        end
-        function q2   = itsQ2(this)
-            q2 = mlkinetics.AbstractF18DeoxyGlucoseKinetics.q2( ...                
-                this.arterialNyquist.specificActivity, this.k1, this.itsA, this.itsB, this.k4, this.scannerNyquist.times);
-        end
-        function q3   = itsQ3(this)
-            q3 = mlkinetics.AbstractF18DeoxyGlucoseKinetics.q3( ...                
-                this.arterialNyquist.specificActivity, this.k1, this.itsA, this.itsB, this.k3, this.scannerNyquist.times);
-        end
         function mdl  = itsQpet(this)
-            mdlCell = this.estimateDataFast(this.keysArgs_);
+            mdlCell = this.estimateDataFast(this.keysArgs_{:});
             mdl = mdlCell{1};
         end
         function ed   = estimateDataFast(this, fu, k1, k2, k3, k4, u0, v1)
             %% ESTIMATEDATAFAST is used by AbstractBayesianStrategy.theSolver.
             
-            tNyquist = this.scannerNyquist.times;
-            qNyquist = mlkinetics.AbstractF18DeoxyGlucoseKinetics.qpet( ...
+            tNyquist = this.arterialNyquist.times;
+            qNyquist = qFDG_mex( ...
                 this.arterialNyquist.specificActivity, fu, k1, k2, k3, k4, tNyquist, v1);
             ed{1}    = this.pchip(tNyquist, qNyquist, this.tsc.times, u0);
         end
@@ -280,7 +240,7 @@ classdef AbstractF18DeoxyGlucoseKinetics < mlkinetics.AbstractGlucoseKinetics
                                             @(x) isa(x, 'mlfourd.ImagingContext') || isempty(x));
             addParameter(ip, 'tsc',         []);
             addParameter(ip, 'dta',         []);
-            addParameter(ip, 'filepath',    varargin{1}.vLocation, @isdir);
+            addParameter(ip, 'filepath',    varargin{1}.tracerLocation, @isdir);
             parse(ip, varargin{:});
             this.sessionData = ip.Results.sessionData;
             assert(strcmp(this.sessionData.tracer, 'FDG'));
@@ -300,15 +260,15 @@ classdef AbstractF18DeoxyGlucoseKinetics < mlkinetics.AbstractGlucoseKinetics
             
             this.independentData = {ensureRowVector(this.tsc.times)};
             this.dependentData   = {ensureRowVector(this.tsc.specificActivity)};            
-            [t,dtaBecq1,tscBecq1,this.u0] = ...
+            [t,dtaBecq1,tscBecq1] = ...
                 this.interpolateAll( ...
                     this.dta.times, this.dta.specificActivity, ...
                     this.tsc.times, this.tsc.specificActivity);
-            this.arterialNyquist      = struct('times', t, 'specificActivity', dtaBecq1);
-            this.scannerNyquist      = struct('times', t, 'specificActivity', tscBecq1);
+            this.arterialNyquist = struct('times', t, 'specificActivity', dtaBecq1);
+            this.scannerNyquist  = struct('times', t, 'specificActivity', tscBecq1);
             this.keysParams_ = {'fu' 'k1' 'k2' 'k3' 'k4' 'u0' 'v1'};
             this.keysArgs_   = {this.fu this.k1 this.k2 this.k3 this.k4 this.u0 this.v1};            
-            this = this.buildJeffreysPrior;
+            %this = this.buildJeffreysPrior;
         end        
  
     end
@@ -330,8 +290,8 @@ classdef AbstractF18DeoxyGlucoseKinetics < mlkinetics.AbstractGlucoseKinetics
             for v = 1:length(args)
                 argsv = args{v};
                 plot(0:length(Aa)-1, ...
-                     mlkinetics.AbstractF18DeoxyGlucoseKinetics.qpet( ...
-                         Aa, argsv{1}, argsv{2}, argsv{3}, argsv{4}, this.times{1}, argsv{5}, argsv{6}));
+                     qFDG_mex( ...
+                         Aa, argsv{1}, argsv{2}, argsv{3}, argsv{4}, argsv{5}, this.times{1}, argsv{6}));
             end
             plot(0:length(Aa)-1, this.dependentData{1}, 'LineWidth', 2);
             title(sprintf('k1 %g, k2 %g, k3 %g, k4 %g, u0 %g, v1 %g', ...

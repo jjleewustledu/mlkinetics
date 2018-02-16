@@ -34,16 +34,15 @@ classdef AbstractKinetics < mlbayesian.AbstractMcmcStrategy
             %A1   = ensureColVector(A1);
             %t2   = ensureRowVector(t2);
             %A2   = ensureColVector(A2);
-            dt   = min([timeDifferences(t1) timeDifferences(t2)]) / 8;
+            dt   = min([timeDifferences(t1) timeDifferences(t2)]) / 2; % Nyquist limit
             tInf = min([t1 t2]);
             tSup = max([t1 t2]);
-            
-            import mlkinetics.*;
-            Dt            = timeSeriesDt(t1, A1, t2, A2); % > 0            
+                     
             [t1,A1,t2,A2] = interpolateBoundaries(t1, A1, t2, A2);                     
             t             = tInf:dt:tSup;
-            interp1       = AbstractKinetics.slide(pchip(t1,A1,t), t, -Dt); 
-            interp2       = pchip(t2,A2,t);            
+            interp1       = pchip(t1,A1,t);
+            interp2       = pchip(t2,A2,t);  
+            Dt            = 0;
 
             function timeDiffs = timeDifferences(times)
                 timeDiffs = times(2:end) - times(1:end-1);
@@ -70,8 +69,20 @@ classdef AbstractKinetics < mlbayesian.AbstractMcmcStrategy
         function tf        = checkConstructKineticsPassed(this)
             error('mlkinetics:notImplemented', 'AbstractKinetics.checkConstructKineticsPassed');
         end
-        function [this,lg] = doItsBayes(this)
+        function [this,lg] = doItsBayes(this, varargin)
+            %% DOITSBAYES
+            %  @param named adjustment is char:  e.g., nBeta>= 50, nAnneal >= 20.
+            %  @param named value is integer.
+            
+            ip = inputParser;
+            addParameter(ip, 'adjustment', '', @ischar);
+            addParameter(ip, 'value', nan, @isnumeric);
+            parse(ip, varargin{:});
+            
             tic            
+            if (~isempty(ip.Results.adjustment))
+                this = this.adjustN(ip.Results.adjustment, ip.Results.value);
+            end
             this = this.estimateParameters;
             this.plot;
             saveFigures(sprintf('fig_%s', this.fileprefix));            
@@ -81,7 +92,8 @@ classdef AbstractKinetics < mlbayesian.AbstractMcmcStrategy
             lg = this.logging;
             lg.save('w');   
             fprintf('%s.doItsBayes:', class(this));
-            fprintf('%s\n', char(lg));            
+            fprintf('%s\n', char(lg));  
+            fprintf('%s.doItsBayes:  completed work in %s\n', class(this), pwd);
             toc
         end
         function [this,lg] = doItsBayesQuietly(this)

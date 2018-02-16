@@ -13,7 +13,7 @@ classdef AbstractGlucoseKinetics < mlkinetics.AbstractKinetics
     end
     
     properties
-        bloodGlucoseBlinding = true
+        bloodGlucoseBlinding = false
     end
     
     properties (Dependent)
