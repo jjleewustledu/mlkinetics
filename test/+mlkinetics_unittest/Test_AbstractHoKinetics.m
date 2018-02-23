@@ -26,7 +26,7 @@ classdef Test_AbstractHoKinetics < matlab.unittest.TestCase
         function test_ctor(this)
         end
         function test_aif(this)
-            this.verifyClass(this.testObj.aif, 'mlpet.Twilite');
+            this.verifyClass(this.testObj.aif, 'mlswisstrace.Twilite');
         end
         function test_scanner(this)
             this.verifyClass(this.testObj.scanner, 'mlsiemens.BiographMMR');

@@ -14,14 +14,14 @@ classdef AbstractF18DeoxyGlucoseKinetics < mlkinetics.AbstractGlucoseKinetics
     end
     
     properties
-        fu = 0.02 % recirculation fraction
+        fu = 1 % bolus factor for scanner data
         % Joanne Markham used the notation K_1 = V_B*k_{21}, rate from compartment 1 to 2.
         % Mean values from Powers xlsx "Final Normals WB PET PVC & ETS"
-        k1 = 0.012474 %3.946/60
-        k2 = 0.002699 %0.3093/60
-        k3 = 0.001255 %0.1862/60
-        k4 = 0.000436 %0.01382/60
-        u0 = -13      %0 % offset of scanner data w.r.t. blood sampling data
+        k1 = 0.304 %3.946/60
+        k2 = 0.159 %0.3093/60
+        k3 = 0.0274 %0.1862/60
+        k4 = 0.01382/60
+        u0 = -11.9 %-13      %0 % offset of scanner data w.r.t. blood sampling data
         v1 = 0.0383
         
         sk1 = 1.254/60
@@ -40,11 +40,11 @@ classdef AbstractF18DeoxyGlucoseKinetics < mlkinetics.AbstractGlucoseKinetics
     end
     
     methods (Static)
-        function q      = qpet(Aa, fu, k1, k2, k3, k4, t, v1)   
-            q = qFDG_mex(Aa, fu, k1, k2, k3, k4, t, v1);
+        function q      = qpet(Aa, fu, k1, k2, k3, k4, t, v1)
+            q = qFDG(Aa, fu, k1, k2, k3, k4, t, v1);
         end
         function mdl    = model(varargin)
-            mdl = qFDG_mex(varargin{:});
+            mdl = qFDG(varargin{:});
         end
         function Cp     = wb2plasma(Cwb, hct, t)
             if (hct > 1)
@@ -82,10 +82,10 @@ classdef AbstractF18DeoxyGlucoseKinetics < mlkinetics.AbstractGlucoseKinetics
             end
             
             m = containers.Map;
-            N = 20;
+            N = 80;
             
             % From Powers xlsx "Final Normals WB PET PVC & ETS"
-            m('fu') = struct('fixed', 1, 'min', 0.01,                              'mean', this.fu, 'max',   1);  
+            m('fu') = struct('fixed', 0, 'min', 0.2,                               'mean', this.fu, 'max',   5);  
             m('k1') = struct('fixed', 0, 'min', 0.05/60,                           'mean', this.k1, 'max',  20/60);
             m('k2') = struct('fixed', 0, 'min', max(0.04517/60   - N*this.sk2, 0), 'mean', this.k2, 'max',   1.7332/60   + N*this.sk2);
             m('k3') = struct('fixed', 0, 'min', max(0.05827/60   - N*this.sk3, 0), 'mean', this.k3, 'max',   0.41084/60  + N*this.sk3);
@@ -96,6 +96,44 @@ classdef AbstractF18DeoxyGlucoseKinetics < mlkinetics.AbstractGlucoseKinetics
         
         %%
          
+        function [this,lg] = doItsBayes(this, varargin)
+            %% DOITSBAYES
+            %  @param named adjustment is char:  e.g., nBeta>= 50, nAnneal >= 20.
+            %  @param named value is integer.
+            
+            ip = inputParser;
+            ip.KeepUnmatched = true;
+            addParameter(ip, 'adjustment', '', @ischar);
+            addParameter(ip, 'value', nan, @isnumeric);
+            parse(ip, varargin{:});
+            this.parameterToAdjust_ = ip.Results.adjustment;
+            this.adjustmentValue_   = ip.Results.value;
+            
+            tic
+            this = this.estimateParameters;
+            this.plot;
+            saveFigures(sprintf('fig_%s', this.fileprefix));            
+            this = this.updateSummary;
+            this.save;
+            this.writetable;
+            lg = this.logging;
+            lg.save('w');   
+            fprintf('%s.doItsBayes:', class(this));
+            fprintf('%s\n', char(lg));  
+            fprintf('%s.doItsBayes:  completed work in %s\n', class(this), pwd);
+            toc
+        end
+        function [this,lg] = doItsBayesQuietly(this)
+            this = this.makeQuiet;
+            this = this.estimateParameters;
+            this.plot;
+            saveFigures(sprintf('fig_%s', this.fileprefix));            
+            this = this.updateSummary;
+            this.save;
+            this.writetable;
+            lg = this.logging;
+            lg.save('w');
+        end
         function this = updateSummary(this)
             s.class = class(this);
             s.datestr = datestr(now, 30);
@@ -156,7 +194,7 @@ classdef AbstractF18DeoxyGlucoseKinetics < mlkinetics.AbstractGlucoseKinetics
             %% ESTIMATEDATAFAST is used by AbstractBayesianStrategy.theSolver.
             
             tNyquist = this.arterialNyquist.times;
-            qNyquist = qFDG_mex( ...
+            qNyquist = qFDG( ...
                 this.arterialNyquist.specificActivity, fu, k1, k2, k3, k4, tNyquist, v1);
             ed{1}    = this.pchip(tNyquist, qNyquist, this.tsc.times, u0);
         end
@@ -235,6 +273,7 @@ classdef AbstractF18DeoxyGlucoseKinetics < mlkinetics.AbstractGlucoseKinetics
  			this = this@mlkinetics.AbstractGlucoseKinetics();
             
             ip = inputParser;
+            ip.KeepUnmatched = true;
             addRequired( ip, 'sessionData', @(x) isa(x, 'mlpipeline.ISessionData'));
             addParameter(ip, 'mask',        varargin{1}.aparcAsegBinarized('typ','mlfourd.ImagingContext'), ...
                                             @(x) isa(x, 'mlfourd.ImagingContext') || isempty(x));
@@ -253,11 +292,14 @@ classdef AbstractF18DeoxyGlucoseKinetics < mlkinetics.AbstractGlucoseKinetics
             if (~this.dta.isPlasma)
                 this.dta.specificActivity = ...
                     mlkinetics.AbstractF18DeoxyGlucoseKinetics.wb2plasma(this.dta.specificActivity, this.hct, this.dta.times);
+                this.dta.isPlasma = true;
             end
             if (isempty(ip.Results.tsc) && isempty(ip.Results.dta))
                 this.tsc_ = this.dta.scannerData;
             end
             
+            assert(isvector(this.tsc.times));            
+            assert(isvector(this.tsc.specificActivity));
             this.independentData = {ensureRowVector(this.tsc.times)};
             this.dependentData   = {ensureRowVector(this.tsc.specificActivity)};            
             [t,dtaBecq1,tscBecq1] = ...
@@ -268,7 +310,7 @@ classdef AbstractF18DeoxyGlucoseKinetics < mlkinetics.AbstractGlucoseKinetics
             this.scannerNyquist  = struct('times', t, 'specificActivity', tscBecq1);
             this.keysParams_ = {'fu' 'k1' 'k2' 'k3' 'k4' 'u0' 'v1'};
             this.keysArgs_   = {this.fu this.k1 this.k2 this.k3 this.k4 this.u0 this.v1};            
-            %this = this.buildJeffreysPrior;
+            this = this.buildJeffreysPrior;
         end        
  
     end
@@ -290,7 +332,7 @@ classdef AbstractF18DeoxyGlucoseKinetics < mlkinetics.AbstractGlucoseKinetics
             for v = 1:length(args)
                 argsv = args{v};
                 plot(0:length(Aa)-1, ...
-                     qFDG_mex( ...
+                     qFDG( ...
                          Aa, argsv{1}, argsv{2}, argsv{3}, argsv{4}, argsv{5}, this.times{1}, argsv{6}));
             end
             plot(0:length(Aa)-1, this.dependentData{1}, 'LineWidth', 2);

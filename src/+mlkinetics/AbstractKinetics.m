@@ -69,43 +69,9 @@ classdef AbstractKinetics < mlbayesian.AbstractMcmcStrategy
         function tf        = checkConstructKineticsPassed(this)
             error('mlkinetics:notImplemented', 'AbstractKinetics.checkConstructKineticsPassed');
         end
-        function [this,lg] = doItsBayes(this, varargin)
-            %% DOITSBAYES
-            %  @param named adjustment is char:  e.g., nBeta>= 50, nAnneal >= 20.
-            %  @param named value is integer.
-            
-            ip = inputParser;
-            addParameter(ip, 'adjustment', '', @ischar);
-            addParameter(ip, 'value', nan, @isnumeric);
-            parse(ip, varargin{:});
-            
-            tic            
-            if (~isempty(ip.Results.adjustment))
-                this = this.adjustN(ip.Results.adjustment, ip.Results.value);
-            end
-            this = this.estimateParameters;
-            this.plot;
-            saveFigures(sprintf('fig_%s', this.fileprefix));            
-            this = this.updateSummary;
-            this.save;
-            this.writetable;
-            lg = this.logging;
-            lg.save('w');   
-            fprintf('%s.doItsBayes:', class(this));
-            fprintf('%s\n', char(lg));  
-            fprintf('%s.doItsBayes:  completed work in %s\n', class(this), pwd);
-            toc
+        function this      = doItsBayes(this, varargin)
         end
-        function [this,lg] = doItsBayesQuietly(this)
-            this = this.makeQuiet;
-            this = this.estimateParameters;
-            this.plot;
-            saveFigures(sprintf('fig_%s', this.fileprefix));            
-            this = this.updateSummary;
-            this.save;
-            this.writetable;
-            lg = this.logging;
-            lg.save('w');
+        function this      = doItsBayesQuietly(this)
         end
         function             writetable(this, varargin) %#ok<INUSD>
         end

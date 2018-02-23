@@ -23,6 +23,10 @@ classdef AbstractGlucoseKinetics < mlkinetics.AbstractKinetics
         tsc
     end
     
+    methods (Abstract)
+        mdl = itsQpet(this)
+    end
+    
     methods 
         
         %% GET/SET
