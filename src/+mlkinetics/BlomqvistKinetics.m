@@ -109,9 +109,18 @@ classdef BlomqvistKinetics
             sz     = this.scanner_.size;
             mskImg = this.scanner_.mask.img;
             img    = zeros(sz(1),sz(2),sz(3));
-            for z = 1:sz(3)
-                for y = 1:sz(2)
-                    for x = 1:sz(1)
+            if (strcmp(getenv('TEST_HERSCOVITCH1985'), '1'))
+                zrng = ceil(sz(3)/2):ceil(sz(3)/2);
+                yrng = ceil(sz(2)/2):ceil(sz(2)/2)+10;
+                xrng = ceil(sz(2)/2):ceil(sz(2)/2)+10;
+            else
+                zrng = 1:sz(3);
+                yrng = 1:sz(2);
+                xrng = 1:sz(1);
+            end
+            for z = zrng
+                for y = yrng
+                    for x = xrng 
                         if (mskImg(x,y,z))
                             img(x,y,z) = this.buildCmrglcVoxel([x y z]);
                         end
@@ -176,6 +185,7 @@ classdef BlomqvistKinetics
             this.scanner_ = ip.Results.scanner;
             this.cbv_     = ip.Results.cbv;
             this.glc_     = ip.Results.glc;
+            this.hct_     = ip.Results.hct;
             
             rng_s    = this.scanner_.index0:this.scanner_.indexF;
             t        = this.scanner_.times(rng_s);
