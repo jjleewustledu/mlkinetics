@@ -1,5 +1,5 @@
-classdef BlomqvistKinetics 
-	%% BLOMQVISTKINETICS 
+classdef Blomqvist1984 
+	%% BLOMQVIST1984 
     %  See also:  J. Cereb. Blood Flow & Metab. 4:629-632 1984.
 
 	%  $Revision$
@@ -7,7 +7,7 @@ classdef BlomqvistKinetics
  	%  last modified $LastChangedDate$ and placed into repository /Users/jjlee/MATLAB-Drive/mlraichle/src/+mlraichle.
  	%% It was developed on Matlab 9.2.0.538062 (R2017a) for MACI64.  Copyright 2018 John Joowon Lee.
  	
-    properties (Constant)        
+    properties       
         LC = 0.64 % Powers, et al., JCBFM 31(5) 1223-1228, 2011.
         %LC = 0.81 % Wu, et al., Molecular Imaging and Biology, 5(1), 32-41, 2003.
     end
@@ -19,7 +19,7 @@ classdef BlomqvistKinetics
             
             % test:
             % t = 0:9; Aa = exp(-t/3); qt = 1 - exp(-t/3); 
-            % qT = BlomqvistKinetics.qpet(Aa, [], 1, 1, 1, qt, t, 1) \sim t;
+            % qT = Blomqvist1984.qpet(Aa, [], 1, 1, 1, qt, t, 1) \sim t;
             % plot(t,Aa,t,qt)
             
             % disable for speed:
@@ -27,7 +27,7 @@ classdef BlomqvistKinetics
             % assert(all(size(Ca) == size(qt)) && ...
             %        all(size(qt) == size(t)));
             
-            dt     = mlkinetics.BlomqvistKinetics.dt(t);
+            dt     = mlkinetics.Blomqvist1984.dt(t);
             qT     = zeros(size(qt));            
             Ca_dt_ = v1*Ca .* dt;
             qt_dt_ = qt    .* dt;
@@ -44,7 +44,7 @@ classdef BlomqvistKinetics
             % disable for speed:
             %%assert(isrow(Ca) && isrow(t) && isscalar(v1));
             
-            Ca_dt_ = v1 * Ca .* mlkinetics.BlomqvistKinetics.dt(t);
+            Ca_dt_ = v1 * Ca .* mlkinetics.Blomqvist1984.dt(t);
             col = zeros(length(t), 1);
             for i = 1:length(t)
                 col(i) = trapz(Ca_dt_(1:i), 2);
@@ -58,7 +58,7 @@ classdef BlomqvistKinetics
             % disable for speed:
             %%assert(isrow(Ca) && isrow(t) && isscalar(v1));
             
-            dt = mlkinetics.BlomqvistKinetics.dt(t);
+            dt = mlkinetics.Blomqvist1984.dt(t);
             Ca_dt_ = v1 * Ca .* dt;
             col = zeros(length(t), 1);
             for i = 1:length(t)
@@ -73,7 +73,7 @@ classdef BlomqvistKinetics
             % disable for speed:
             %%assert(isrow(qt) && isrow(t));
             
-            qt_dt_ = qt .* mlkinetics.BlomqvistKinetics.dt(t);
+            qt_dt_ = qt .* mlkinetics.Blomqvist1984.dt(t);
             col = zeros(length(t), 1);
             for i = 1:length(t)
                 col(i) = -trapz(qt_dt_(1:i), 2);
@@ -88,7 +88,7 @@ classdef BlomqvistKinetics
             if (hct > 1)
                 hct = hct/100;
             end
-            import mlkinetics.BlomqvistKinetics.*;
+            import mlkinetics.Blomqvist1984.*;
             Cp = Cwb./(1 + hct*(rbcOverPlasma(t) - 1));
         end
         function rop = rbcOverPlasma(t)
@@ -159,10 +159,10 @@ classdef BlomqvistKinetics
             %  @returns this with this.product := mdl.  ks are in mdl.Coefficients{:,'Estimate'}.
             %  See also:  https://www.mathworks.com/help/releases/R2016b/stats/nonlinear-regression-workflow.html
             
-            error('mlkinetics:notImplemented', 'BlomqvistKinetics.buildCmrglcNonlinear');
+            error('mlkinetics:notImplemented', 'Blomqvist1984.buildCmrglcNonlinear');
             
-            fprintf('BlomqvistKinetics.buildCmrglcNonlinear ..........\n'); %#ok<UNRCH>
-            mdl = fitnlm(ensureColVector(qt), ensureColVector(qT), @mlkinetics.BlomqvistKinetics.qpet, ks0);            
+            fprintf('Blomqvist1984.buildCmrglcNonlinear ..........\n'); %#ok<UNRCH>
+            mdl = fitnlm(ensureColVector(qt), ensureColVector(qT), @mlkinetics.Blomqvist1984.qpet, ks0);            
             disp(mdl)
             fprintf('mdl.RMSE -> %g, min(rho) -> %g, max(rho) -> %g\n', mdl.RMSE, min(qt), max(qt));
             plotResiduals(mdl);
@@ -171,9 +171,9 @@ classdef BlomqvistKinetics
             this.product_ = mdl;
         end
 		  
- 		function this = BlomqvistKinetics(varargin)
- 			%% BLOMQVISTKINETICS
- 			%  Usage:  this = BlomqvistKinetics()
+ 		function this = Blomqvist1984(varargin)
+ 			%% BLOMQVIST1984
+ 			%  Usage:  this = Blomqvist1984()
 
  			ip = inputParser;
             addParameter(ip, 'aif',     [], @(x) isa(x, 'mlpet.IAifData'));
@@ -181,12 +181,14 @@ classdef BlomqvistKinetics
             addParameter(ip, 'cbv',     [], @(x) isa(x, 'mlfourd.INIfTI'));
             addParameter(ip, 'glc',     [], @isscalar);
             addParameter(ip, 'hct',     [], @isscalar);
+            addParameter(ip, 'LC', this.LC, @isnumeric);
             parse(ip, varargin{:});            
             this.aif_     = ip.Results.aif;
             this.scanner_ = ip.Results.scanner;
             this.cbv_     = ip.Results.cbv;
             this.glc_     = ip.Results.glc;
             this.hct_     = ip.Results.hct;
+            this.LC       = ip.Results.LC;
             
             rng_s    = this.scanner_.index0:this.scanner_.indexF;
             t        = this.scanner_.times(rng_s);
