@@ -66,13 +66,14 @@ classdef Huang1980
     end
     
 	methods 
-        function img  = buildCmrglcMap(this) 
+        function [img,ks]  = buildCmrglcMap(this) 
             %  @return units of [CMRglc] == (mg/dL)(1/min)(mL/hg).
             
             warning('off', 'optimlib:lsqlin:WillRunDiffAlg');
             sz     = this.scanner_.size;
             mskImg = this.scanner_.mask.img;
             img    = zeros(sz(1),sz(2),sz(3));
+            ks     = zeros(sz(1),sz(2),sz(3), 4);
             if (strcmp(getenv('TEST_HERSCOVITCH1985'), '1'))
                 zrng = ceil(sz(3)/2):ceil(sz(3)/2);
                 yrng = ceil(sz(2)/2):ceil(sz(2)/2)+10;
@@ -86,7 +87,7 @@ classdef Huang1980
                 for y = yrng
                     for x = xrng 
                         if (mskImg(x,y,z))
-                            img(x,y,z) = this.buildCmrglcNonlinear([x y z]);
+                            [img(x,y,z),ks(x,y,z,:)] = this.buildCmrglcNonlinear([x y z]);
                         end
                     end
                 end
@@ -94,7 +95,7 @@ classdef Huang1980
             img = img * this.glc_ / this.LC; 
             warning('on', 'optimlib:lsqlin:WillRunDiffAlg');
         end
-        function vox = buildCmrglcNonlinear(this, xvec)
+        function [vox,ks] = buildCmrglcNonlinear(this, xvec)
             %% BUILDCMRGLCNONLINEAR calls lsqcurvefit.
             %  @return vox is numeric.
             %  See also:  https://www.mathworks.com/help/releases/R2016b/stats/nonlinear-regression-workflow.html
@@ -109,7 +110,8 @@ classdef Huang1980
             %disp(resnorm)
             %disp(residual)
             disp(exitflag)
-            vox = 60*ks(1)*ks(3)/(ks(2) + ks(3)); % 60 mL/g/s -> mL/g/min
+            ks  = 60*ks; % 60 mL/g/s -> mL/g/min
+            vox = ks(1)*ks(3)/(ks(2) + ks(3)); 
         end
 		  
  		function this = Huang1980(varargin)
@@ -134,7 +136,11 @@ classdef Huang1980
             rng_s     = this.scanner_.index0:this.scanner_.indexF;
             t         = this.scanner_.times(rng_s);
             rng_a     = this.aif_.index0:this.aif_.indexF;
-            Cwb       = pchip([0 this.aif_.times(rng_a)], [0 this.aif_.specificActivity(rng_a)], t);
+            if (this.aif_.times(1) > 0)
+                Cwb   = pchip([0 this.aif_.times(rng_a)], [0 this.aif_.specificActivity(rng_a)], t);
+            else
+                Cwb   = pchip(   this.aif_.times(rng_a),     this.aif_.specificActivity(rng_a), t);
+            end
             this.Cp_  = ensureRowVector(this.wb2plasma(Cwb, this.hct_, t));
             this.t_   = ensureRowVector(t);
             this.ks0_ = [4 0.3 0.2 0.01]/60;
