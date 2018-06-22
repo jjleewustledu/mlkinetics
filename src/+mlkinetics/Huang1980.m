@@ -7,9 +7,14 @@ classdef Huang1980
  	%  last modified $LastChangedDate$ and placed into repository /Users/jjlee/MATLAB-Drive/mlraichle/src/+mlraichle.
  	%% It was developed on Matlab 9.2.0.538062 (R2017a) for MACI64.  Copyright 2018 John Joowon Lee.
  	
+    properties (Constant)
+        V = 0.038
+    end
+    
     properties   
         LC = 0.64 % Powers, et al., JCBFM 31(5) 1223-1228, 2011.
         %LC = 0.81 % Wu, et al., Molecular Imaging and Biology, 5(1), 32-41, 2003.
+        nSamples = [] % for testing
     end
 
     methods (Static)
@@ -38,14 +43,38 @@ classdef Huang1980
             k2 = ks(2);
             k3 = ks(3);
             k4 = ks(4);  
+            Dt = ks(5); % shift Cp
             
             import mlkinetics.*;
+            Cp = Huang1980.slide(Cp, t, Dt);
             a  = Huang1980.a(k2, k3, k4);
             b  = Huang1980.b(k2, k3, k4);
             qT = Huang1980.q2(Cp, K1, a, b, k4, t) + ...
-                 Huang1980.q3(Cp, K1, a, b, k3, t);
+                 Huang1980.q3(Cp, K1, a, b, k3, t) + Huang1980.V*Cp; 
             qT = double(qT);
-        end        
+        end     
+        function conc    = slide(conc, t, Dt)
+            %% SLIDE slides discretized function conc(t) to conc(t - Dt);
+            %  Dt > 0 will slide conc(t) towards later times t.
+            %  Dt < 0 will slide conc(t) towards earlier times t.
+            %  It works for inhomogeneous t according to the ability of pchip to interpolate.
+            %  It may not preserve information according to the Nyquist-Shannon theorem.  
+            
+            import mlbayesian.*;
+            [conc,trans] = AbstractBayesianStrategy.ensureRow(conc);
+            t            = AbstractBayesianStrategy.ensureRow(t);
+            
+            tspan = t(end) - t(1);
+            tinc  = t(2) - t(1);
+            t_    = [(t - tspan - tinc) t];   % prepend times
+            conc_ = [zeros(size(conc)) conc]; % prepend zeros
+            conc_(isnan(conc_)) = 0;
+            conc  = pchip(t_, conc_, t - Dt); % interpolate onto t shifted by Dt; Dt > 0 shifts to right
+            
+            if (trans)
+                conc = conc';
+            end
+        end   
         function Cp  = wb2plasma(Cwb, hct, t)
             if (hct > 1)
                 hct = hct/100;
@@ -66,52 +95,34 @@ classdef Huang1980
     end
     
 	methods 
-        function [img,ks]  = buildCmrglcMap(this) 
+        function [cmrglc,ks,synth]  = buildCmrglcMap(this) 
             %  @return units of [CMRglc] == (mg/dL)(1/min)(mL/hg).
             
             warning('off', 'optimlib:lsqlin:WillRunDiffAlg');
-            sz     = this.scanner_.size;
-            mskImg = this.scanner_.mask.img;
-            img    = zeros(sz(1),sz(2),sz(3));
-            ks     = zeros(sz(1),sz(2),sz(3), 4);
-            if (strcmp(getenv('TEST_HERSCOVITCH1985'), '1'))
-                zrng = ceil(sz(3)/2):ceil(sz(3)/2);
-                yrng = ceil(sz(2)/2):ceil(sz(2)/2)+10;
-                xrng = ceil(sz(2)/2):ceil(sz(2)/2)+10;
-            else
-                zrng = 1:sz(3);
-                yrng = 1:sz(2);
-                xrng = 1:sz(1);
-            end
-            for z = zrng
-                for y = yrng
-                    for x = xrng 
-                        if (mskImg(x,y,z))
-                            [img(x,y,z),ks(x,y,z,:)] = this.buildCmrglcNonlinear([x y z]);
-                        end
-                    end
-                end
-            end
-            img = img * this.glc_ / this.LC; 
+            switch (this.resampler_.rank) % R^{d+1}
+                case 2
+                    [Ki,ks,synth] = this.buildCmrglcMap1;
+                case 3
+                    [Ki,ks,synth] = this.buildCmrglcMap2;
+                case 4
+                    [Ki,ks,synth] = this.buildCmrglcMap3;
+                otherwise
+                    error('mlkinetics:unsupportedSwitchcase', ...
+                          'Huang1980.buildCmrglcMap.this.scanner_.mask.rank->%i', this.resampler_.rank);
+            end 
             warning('on', 'optimlib:lsqlin:WillRunDiffAlg');
-        end
-        function [vox,ks] = buildCmrglcNonlinear(this, xvec)
-            %% BUILDCMRGLCNONLINEAR calls lsqcurvefit.
-            %  @return vox is numeric.
-            %  See also:  https://www.mathworks.com/help/releases/R2016b/stats/nonlinear-regression-workflow.html
             
-            import mlkinetics.*;
-            rng_s = this.scanner_.index0:this.scanner_.indexF;
-            qT    = ensureRowVector(squeeze(this.scanner_.specificActivity(xvec(1),xvec(2),xvec(3),rng_s))); 
-            anon  = @(ks__,t__)Huang1980.qpet(ks__, this.Cp_, t__);
-            [ks,~,~,exitflag] = ...
-                    lsqcurvefit(anon, this.ks0_, this.t_, qT, this.lb_, this.ub_);
-            disp(ks)
-            %disp(resnorm)
-            %disp(residual)
-            disp(exitflag)
-            ks  = 60*ks; % 60 mL/g/s -> mL/g/min
-            vox = ks(1)*ks(3)/(ks(2) + ks(3)); 
+            % assemble physiologic units
+            cmrglc = Ki * this.glc_ / this.LC; % [CMRglc] := (mL/g/min) (mg/dL)
+            if (this.useSI_)
+                cmrglc = 0.05551 * cmrglc; % 100 * % g to hg conversion issue?
+                % [CMRglc] := \mumol/(min hg) ==
+                % (1/min)(mL/g)(mg/dL) x 100 (g/hg) x 0.05551 [\mumol/mL][dL/mg]
+            end
+            if (this.resampler_.rank < 3)
+                t = table(cmrglc, ks(1), ks(2), ks(3), ks(4), ks(5), 'VariableNames', {'cmrglc' 'K1' 'k2' 'k3' 'k4' 'Dt'});
+                writetable(t, [this.resampler_.fqfileprefix '.txt']);
+            end
         end
 		  
  		function this = Huang1980(varargin)
@@ -119,22 +130,33 @@ classdef Huang1980
  			%  Usage:  this = Huang1980()
 
  			ip = inputParser;
-            addParameter(ip, 'aif',     [], @(x) isa(x, 'mlpet.IAifData'));
-            addParameter(ip, 'scanner', [], @(x) isa(x, 'mlpet.IScannerData'));
-            addParameter(ip, 'cbv',     [], @(x) isa(x, 'mlfourd.INIfTI') || isempty(x));
-            addParameter(ip, 'glc',     [], @isscalar);
-            addParameter(ip, 'hct',     [], @isscalar);
-            addParameter(ip, 'LC', this.LC, @isnumeric);
+            ip.KeepUnmatched = true;
+            addParameter(ip, 'aif',       [], @(x) isa(x, 'mlpet.IAifData'));
+            addParameter(ip, 'scanner',   [], @(x) isa(x, 'mlpet.IScannerData'));
+            addParameter(ip, 'resampler', [], @(x) isa(x, 'mlfourd.AbstractResampler'));
+            addParameter(ip, 'cbv',       [], @(x) isa(x, 'mlfourd.INIfTI') || isempty(x));
+            addParameter(ip, 'glc',       [], @isscalar);
+            addParameter(ip, 'hct',       [], @isscalar);
+            addParameter(ip, 'LC', this.LC,   @isnumeric);
+            addParameter(ip, 'useSI', true,   @islogical);
+            addParameter(ip, 'logger', mlpipeline.Logger(tmpFileprefix), @(x) isa(x, 'mlpipeline.Logger'));
             parse(ip, varargin{:});            
-            this.aif_     = ip.Results.aif;
-            this.scanner_ = ip.Results.scanner;
-            this.cbv_     = ip.Results.cbv;
-            this.glc_     = ip.Results.glc;
-            this.hct_     = ip.Results.hct;
-            this.LC       = ip.Results.LC;
+            this.aif_       = ip.Results.aif;
+            this.scanner_   = ip.Results.scanner;
+            this.resampler_ = ip.Results.resampler;
+            this.cbv_       = ip.Results.cbv;
+            this.glc_       = ip.Results.glc;
+            this.hct_       = ip.Results.hct;
+            this.LC         = ip.Results.LC;
+            this.useSI_     = ip.Results.useSI;
+            this.logger_    = ip.Results.logger;
             
             rng_s     = this.scanner_.index0:this.scanner_.indexF;
             t         = this.scanner_.times(rng_s);
+            d         = this.resampler_.dynamic;
+            this.dynamic_ = d.niftid;
+            m         = this.resampler_.mask;
+            this.mask_ = m.niftid;
             rng_a     = this.aif_.index0:this.aif_.indexF;
             if (this.aif_.times(1) > 0)
                 Cwb   = pchip([0 this.aif_.times(rng_a)], [0 this.aif_.specificActivity(rng_a)], t);
@@ -142,10 +164,12 @@ classdef Huang1980
                 Cwb   = pchip(   this.aif_.times(rng_a),     this.aif_.specificActivity(rng_a), t);
             end
             this.Cp_  = ensureRowVector(this.wb2plasma(Cwb, this.hct_, t));
-            this.t_   = ensureRowVector(t);
+            this.t_   = double(ensureRowVector(t));
             this.ks0_ = [4 0.3 0.2 0.01]/60;
-            this.lb_  = this.ks0_/1000;
-            this.ub_  = this.ks0_*1000;
+            this.ks0_ = [this.ks0_ -4];
+            this.lb_  = []; %[0 0 0 0 -120];
+            this.ub_  = []; %[this.ks0_(1:4)*1024 0];
+            this.options_ = optimoptions('lsqcurvefit','Algorithm','levenberg-marquardt');
  		end
     end 
     
@@ -154,14 +178,130 @@ classdef Huang1980
 	properties (Access = private)
  		aif_
         Cp_
+        dynamic_
+        mask_
+        options_
         scanner_
+        resampler_
         cbv_
         glc_
         hct_
         ks0_
         lb_
+        logger_
         t_
         ub_
+        useSI_
+    end
+    
+    methods (Access = private)
+        function [Ki,ks,synth] = buildCmrglcMap1(this) 
+            %  @return units of [Ki] == [K1 k3/(k2 + k3)] == mL/g/min
+            
+            [Ki,ks,synth] = this.buildCmrglcNonlinear1;
+        end
+        function [Ki,ks,synth] = buildCmrglcMap2(this) 
+            %  @return units of [Ki] == [K1 k3/(k2 + k3)] == mL/g/min
+            
+            sz     = this.mask_.size;
+            Ki     = zeros(sz(1),sz(2));
+            ks     = zeros(sz(1),sz(2), length(this.ks0_));
+            synth  = zeros(sz(1),sz(2),length(this.t_));
+            smpls  = 0;
+            yrng   = 1:sz(2);
+            xrng   = 1:sz(1);
+            for y = yrng
+                for x = xrng 
+                    if (this.mask_.img(x,y))
+                        smpls = smpls + 1;
+                        if (isempty(this.nSamples) || smpls <= this.nSamples)
+                            [Ki(x,y),ks(x,y,:),synth(x,y,:)] = this.buildCmrglcNonlinear2([x y]);
+                        end
+                    end
+                end
+            end
+        end
+        function [Ki,ks,synth] = buildCmrglcMap3(this) 
+            %  @return units of [Ki] == [K1 k3/(k2 + k3)] == mL/g/min
+            
+            sz     = this.mask_.size;
+            Ki     = zeros(sz(1),sz(2),sz(3));
+            ks     = zeros(sz(1),sz(2),sz(3), length(this.ks0_));
+            synth  = zeros(sz(1),sz(2),sz(3),length(this.t_));
+            smpls  = 0;
+            zrng   = 1:sz(3);
+            yrng   = 1:sz(2);
+            xrng   = 1:sz(1);
+            for z = zrng
+                for y = yrng
+                    for x = xrng 
+                        if (this.mask_.img(x,y,z))
+                            smpls = smpls + 1;
+                            if (isempty(this.nSamples) || smpls <= this.nSamples)                                
+                                [Ki(x,y,z),ks(x,y,z,:),synth(x,y,z,:)] = this.buildCmrglcNonlinear3([x y z]);
+                            end
+                        end
+                    end
+                end
+            end
+        end
+        function [Ki,ks,synth] = buildCmrglcNonlinear1(this, varargin)
+            %% BUILDCMRGLCNONLINEAR calls lsqcurvefit.
+            %  @return vox is numeric.
+            %  See also:  https://www.mathworks.com/help/releases/R2016b/stats/nonlinear-regression-workflow.html
+            
+            import mlkinetics.*;
+            rng_s = this.scanner_.index0:this.scanner_.indexF;
+            qT    = double(ensureRowVector(squeeze(this.dynamic_.img(rng_s)))); 
+            anon  = @(ks__,t__)Huang1980.qpet(ks__, this.Cp_, t__);
+            [ks,~,~,exitflag] = ...
+                    lsqcurvefit(anon, this.ks0_, this.t_, qT, this.lb_, this.ub_, this.options_);
+            disp(ks)
+            %disp(resnorm)
+            %disp(residual)
+            disp(exitflag)
+            synth = anon(ks, this.t_);
+            ks(1:4) = 60 * ks(1:4); % [ks] := [mL/g/min 1/min 1/min 1/min] == 60 [mL/g/s 1/s 1/s 1/s ]
+            Ki = ks(1)*ks(3)/(ks(2) + ks(3)); % [Ki] == [K1 k3/(k2 + k3)] == mL/g/min
+        end
+        function [Ki,ks,synth] = buildCmrglcNonlinear2(this, xvec)
+            %% BUILDCMRGLCNONLINEAR calls lsqcurvefit.
+            %  @return vox is numeric.
+            %  See also:  https://www.mathworks.com/help/releases/R2016b/stats/nonlinear-regression-workflow.html
+            
+            import mlkinetics.*;
+            rng_s = this.scanner_.index0:this.scanner_.indexF;
+            qT    = ensureRowVector(squeeze(this.dynamic_.img(xvec(1),xvec(2),rng_s))); 
+            anon  = @(ks__,t__)Huang1980.qpet(ks__, this.Cp_, t__);
+            [ks,~,~,exitflag] = ...
+                    lsqcurvefit(anon, this.ks0_, this.t_, qT, this.lb_, this.ub_, this.options_);
+            disp(ks)
+            %disp(resnorm)
+            %disp(residual)
+            disp(exitflag)
+            synth = anon(ks, this.t_);
+            ks(1:4) = 60 * ks(1:4); % [ks] := [mL/g/min 1/min 1/min 1/min] == 60 [mL/g/s 1/s 1/s 1/s ]
+            Ki = ks(1)*ks(3)/(ks(2) + ks(3)); % [Ki] == [K1 k3/(k2 + k3)] == mL/g/min
+        end
+        function [Ki,ks,synth] = buildCmrglcNonlinear3(this, xvec)
+            %% BUILDCMRGLCNONLINEAR calls lsqcurvefit.
+            %  @return vox is numeric.
+            %  See also:  https://www.mathworks.com/help/releases/R2016b/stats/nonlinear-regression-workflow.html
+            
+            import mlkinetics.*;
+            rng_s = this.scanner_.index0:this.scanner_.indexF;
+            qT    = ensureRowVector(squeeze(this.dynamic_.img(xvec(1),xvec(2),xvec(3),rng_s))); 
+            anon  = @(ks__,t__)Huang1980.qpet(ks__, this.Cp_, t__);
+            [ks,~,~,exitflag] = ...
+                    lsqcurvefit(anon, this.ks0_, this.t_, qT, this.lb_, this.ub_, this.options_);
+            disp(ks)
+            %disp(resnorm)
+            %disp(residual)
+            disp(exitflag)
+            synth = anon(ks, this.t_);
+            ks(1:4) = 60 * ks(1:4); % [ks] := [mL/g/min 1/min 1/min 1/min] == 60 [mL/g/s 1/s 1/s 1/s ]
+            Ki = ks(1)*ks(3)/(ks(2) + ks(3)); % [Ki] == [K1 k3/(k2 + k3)] == mL/g/min
+        end
     end
 
 	%  Created with Newcl by John J. Lee after newfcn by Frank Gonzalez-Morphy
