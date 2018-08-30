@@ -8,7 +8,7 @@ classdef Huang1980
  	%% It was developed on Matlab 9.2.0.538062 (R2017a) for MACI64.  Copyright 2018 John Joowon Lee.
  	
     properties (Constant)
-        V = 0.038
+        V = 0.038 % blood volume fraction
     end
     
     properties   

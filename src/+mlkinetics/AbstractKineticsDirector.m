@@ -1,4 +1,4 @@
-classdef (Abstract) AbstractKineticsDirector < mlkinetics.IKineticsDirector
+classdef (Abstract) AbstractKineticsDirector < handle & mlkinetics.IHandleKineticsDirector
 	%% ABSTRACTKINETICSDIRECTOR provides methods:  diagnose, plot, writetable.
 
 	%  $Revision$
@@ -6,60 +6,32 @@ classdef (Abstract) AbstractKineticsDirector < mlkinetics.IKineticsDirector
  	%  last modified $LastChangedDate$ and placed into repository /Users/jjlee/Local/src/mlcvl/mlkinetics/src/+mlkinetics.
  	%% It was developed on Matlab 9.3.0.713579 (R2017b) for MACI64.  Copyright 2017 John Joowon Lee.
  	
-	properties (Dependent)
-        builder
-        useSynthetic
- 	end
-
-	methods 
-        
-        %% GET/SET
-        
-        function g = get.builder(this)
-            g = this.kineticsBuilder_;
-        end
-        function g = get.useSynthetic(this)
-            g = this.kineticsBuilder_.useSynthetic;
-        end        
-        
-        function this = set.useSynthetic(this, tf)
-            assert(islogical(tf));
-            this.kineticsBuilder_.useSynthetic = tf;
-        end
-		  
-        %%        
-        
-        function diagnose(this, varargin)
-            this.kineticsBuilder_.diagnose(varargin{:});
-        end
-        function plot(this, varargin)
-            this.kineticsBuilder_.plot(varargin{:});
-        end
-        function report(this, varargin)
-            this.plot(varargin{:});
-            this.writetable(varargin{:});
-            this.save;
-        end
-        function save(this)
-            this.kineticsBuilder_.save;
-        end
-        function writetable(this, varargin)
-            this.kineticsBuilder_.writetable(varargin{:});
-        end
-        
- 	end 
-
+    
+    
+    
     %% PROTECTED
     
     properties (Access = protected)        
         kineticsBuilder_
-        physiologicals_
-        rates_  
         roisBuilder_
     end
     
     methods (Access = protected)
         function this = AbstractKineticsDirector(varargin)
+            %% ABSTRACTKINETICSDIRECTOR
+ 			%  @param kineticsBldr is an mlkinetics.IHandleKineticsBuilder.
+            %  @param roisBldr     is an mlrois.IRoisBuilder.
+            
+ 			ip = inputParser;
+            ip.KeepUnmatched = true;
+            addParameter(ip, 'kineticsBldr', [],               @(x) isa(x, 'mlkinetics.IHandleKineticsBuilder'));
+            addParameter(ip, 'roisBldr', this.defaultRoisBldr, @(x) isa(x, 'mlrois.IRoisBuilder'));
+            parse(ip, varargin{:});
+            this.kineticsBuilder_ = ip.Results.kineticsBldr;
+            this.roisBuilder_     = ip.Results.roisBldr;
+        end
+        function bldr = defaultRoisBldr(~)
+            bldr = mlrois.UnitBuilder;
         end
     end
 

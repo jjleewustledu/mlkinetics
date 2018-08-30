@@ -1,4 +1,4 @@
-classdef (Abstract) AbstractKineticsBuilder < mlkinetics.IKineticsBuilder
+classdef (Abstract) AbstractKineticsBuilder < handle & mlkinetics.IHandleKineticsBuilder
 	%% ABSTRACTKINETICSBUILDER  
 
 	%  $Revision$
@@ -6,81 +6,57 @@ classdef (Abstract) AbstractKineticsBuilder < mlkinetics.IKineticsBuilder
  	%  last modified $LastChangedDate$ and placed into repository /Users/jjlee/Local/src/mlcvl/mlkinetics/src/+mlkinetics.
  	%% It was developed on Matlab 9.3.0.713579 (R2017b) for MACI64.  Copyright 2017 John Joowon Lee.
  	
-	properties (Dependent)        
-        model
- 		solver
- 		useSynthetic
+	properties (Dependent)
+        imagingContext
+ 		product
+        verbose
  	end
 
 	methods 
         
-        %% GET
-        
-        function g = get.model(this)
-            g = this.solver_.model;
-        end
-        function g = get.roisBuilder(this)
-            g = this.roisBuilder_;
-        end
-        function g = get.solver(this)
-            g = this.solver_;
-        end
-        function g = get.useSynthetic(this)
-            g = this.solver_.useSynthetic;
-        end
-        
-        function this = set.model(this, s)
-            this.solver_.model = s;
-        end
-        function this = set.useSynthetic(this, tf)
-            assert(islogical(tf));
-            this.solver_.useSynthetic = tf;
+        %% GET      
+                
+        function g = get.imagingContext(this)
+            g = this.imagingContext_;
+        end   
+        function g = get.product(this)
+            g = this.product_;
+        end    
+        function g = get.verbose(this)
+            g = this.verbose_;
         end
         
         %%   
         
-        function diagnose(this, varargin)
-            this.solver_.diagnose(varargin{:});
+        function addLog(this, varargin)
+            this.imagingContext_.addLog(varargin{:});
         end
         function fprintf(this, s)
             assert(ischar(s));
             fprintf('%s:%s', class(this), s);
         end
-        function plot(this, varargin)
-            this.solver_.plotAnnealing;
-            this.solver_.plotParameterCovariances;
-            this.solver_.plotLogProbabilityQC;
-            this.solver_.histStdOfError;
-        end
-        function save(this)
-            this.solver_.save;
-        end
-        function saveas(this, varargin)
-            this.solver_.saveas(varargin{:});
-        end
         function saveFigures(this)
-            saveFigures(sprintf('fig_%s', this.solver_.fqfileprefix));
-        end
-        function writetable(this, varargin)
-            this.solver_.model.writetable(varargin{:});
+            saveFigures(sprintf('fig_%s', this.imagingContext.fqfileprefix));
         end
 		  
  		function this = AbstractKineticsBuilder(varargin)
  			%% ABSTRACTKINETICSBUILDER
- 			%  @param named solver is an mlanalysis.ISolver
+ 			%  @param named 'verbose' is logical; default := true.
             
             ip = inputParser;
-            addParameter(ip, 'solver', @(x) isa(x, 'mlanalysis.ISolver'));
-            parse(ip, varargin{:});
- 	
-            this.solver_ = ip.Results.solver;
+            ip.KeepUnmatched = true;
+            addParameter(ip, 'verbose', true, @islogical);
+            parse(ip, varargin{:});            
+            this.verbose_ = ip.Results.verbose;
  		end
  	end 
     
     %% PROTECTED
     
     properties (Access = protected)
-        solver_
+        imagingContext_
+        product_
+        verbose_
     end
 
 	%  Created with Newcl by John J. Lee after newfcn by Frank Gonzalez-Morphy
