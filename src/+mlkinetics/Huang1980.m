@@ -99,7 +99,7 @@ classdef Huang1980
             %  @return units of [CMRglc] == (mg/dL)(1/min)(mL/hg).
             
             warning('off', 'optimlib:lsqlin:WillRunDiffAlg');
-            switch (this.resampler_.rank) % R^{d+1}
+            switch (this.resampler_.ndims) % R^{d+1}
                 case 2
                     [Ki,ks,synth] = this.buildCmrglcMap1;
                 case 3
@@ -108,7 +108,7 @@ classdef Huang1980
                     [Ki,ks,synth] = this.buildCmrglcMap3;
                 otherwise
                     error('mlkinetics:unsupportedSwitchcase', ...
-                          'Huang1980.buildCmrglcMap.this.scanner_.mask.rank->%i', this.resampler_.rank);
+                          'Huang1980.buildCmrglcMap.this.scanner_.mask.ndims->%i', this.resampler_.ndims);
             end 
             warning('on', 'optimlib:lsqlin:WillRunDiffAlg');
             
@@ -119,7 +119,7 @@ classdef Huang1980
                 % [CMRglc] := \mumol/(min hg) ==
                 % (1/min)(mL/g)(mg/dL) x 100 (g/hg) x 0.05551 [\mumol/mL][dL/mg]
             end
-            if (this.resampler_.rank < 3)
+            if (this.resampler_.ndims < 3)
                 t = table(cmrglc, ks(1), ks(2), ks(3), ks(4), ks(5), 'VariableNames', {'cmrglc' 'K1' 'k2' 'k3' 'k4' 'Dt'});
                 writetable(t, [this.resampler_.fqfileprefix '.txt']);
             end
