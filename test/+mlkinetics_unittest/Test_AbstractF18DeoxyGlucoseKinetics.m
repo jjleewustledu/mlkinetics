@@ -43,11 +43,10 @@ classdef Test_AbstractF18DeoxyGlucoseKinetics < matlab.unittest.TestCase
 
  	methods (TestClassSetup)
 		function setupF18DeoxyGlucoseKinetics(this)
- 			import mlkinetics.*;
             studyData = mlpipeline.StudyDataSingletons.instance('test_powers');
             iter = studyData.createIteratorForSessionData;
             this.sessionData = iter.next;
- 			this.testObj_ = F18DeoxyGlucoseKinetics(this.sessionData);
+ 			this.testObj_ = mlpowers.F18DeoxyGlucoseKinetics(this.sessionData);
  		end
 	end
 

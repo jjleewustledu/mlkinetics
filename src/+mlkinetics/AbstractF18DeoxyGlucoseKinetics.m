@@ -310,7 +310,7 @@ classdef AbstractF18DeoxyGlucoseKinetics < mlkinetics.AbstractGlucoseKinetics
             this.scannerNyquist  = struct('times', t, 'specificActivity', tscBecq1);
             this.keysParams_ = {'fu' 'k1' 'k2' 'k3' 'k4' 'u0' 'v1'};
             this.keysArgs_   = {this.fu this.k1 this.k2 this.k3 this.k4 this.u0 this.v1};            
-            this = this.buildJeffreysPrior;
+            %this = this.buildJeffreysPrior;
         end        
  
     end
