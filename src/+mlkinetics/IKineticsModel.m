@@ -1,5 +1,4 @@
-classdef (Abstract) IKineticsModel < mlanalysis.IModel
-	%% IKINETICSMODEL  
+classdef (Abstract) IKineticsModel
 
 	%  $Revision$
  	%  was created 12-Dec-2017 16:39:01 by jjlee,
