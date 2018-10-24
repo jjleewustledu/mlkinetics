@@ -1,4 +1,4 @@
-classdef KineticsModel < mlanalysis.NullModel & mlkinetics.IKineticsModel
+classdef KineticsModel < mlbayesian.NullModel & mlkinetics.IKineticsModel
 	%% KINETICSMODEL  
 
 	%  $Revision$
@@ -72,7 +72,7 @@ classdef KineticsModel < mlanalysis.NullModel & mlkinetics.IKineticsModel
             addParameter(ip, 'aifBuilder',         @(x) isa(x, 'mlpet.IAifBuilder'));
             addParameter(ip, 'calibrationBuilder', mlpet.NullCalibrationBuilder(), @(x) isa(x, 'mlpet.ICalibrationBuilder'));
             parse(ip, varargin{:});     
-            this = this@mlanalysis.NullModel( ...
+            this = this@mlbayesian.NullModel( ...
                 'independentData', ip.Results.scannerBuilder.scannerTimes, ...
                 'dependentData',   ip.Results.scannerBuilder.scannerSpecificActivity, ...
                 varargin{:});       
