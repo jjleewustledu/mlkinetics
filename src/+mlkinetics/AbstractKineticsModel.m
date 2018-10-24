@@ -1,4 +1,4 @@
-classdef AbstractKineticsModel < mlanalysis.NullModel & mlkinetics.IKineticsModel
+classdef AbstractKineticsModel < mlbayesian.NullModel & mlkinetics.IKineticsModel
 	%% ABSTRACTKINETICSMODEL  
 
 	%  $Revision$
@@ -70,7 +70,7 @@ classdef AbstractKineticsModel < mlanalysis.NullModel & mlkinetics.IKineticsMode
             %  @param named sessionData    is an mlraichle.SessionData
             %  @param named datedFilename  is logical
  			
-            this = this@mlanalysis.NullModel(varargin{:});
+            this = this@mlbayesian.NullModel(varargin{:});
             ip = inputParser;
             ip.KeepUnmatched = true;
             addParameter(ip, 'scannerBuilder',     @(x) isa(x, 'mlpet.IScannerBuilder'));
