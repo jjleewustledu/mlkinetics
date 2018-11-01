@@ -9,7 +9,7 @@ classdef AbstractO15Kinetics < mlkinetics.AbstractKinetics
  	
     
     properties (Constant)
-        BRAIN_DENSITY         = 1.05        % assumed mean brain density, g/mL     
+        DENSITY_BRAIN         = 1.05        % assumed mean brain density, g/mL     
         DECAY_CONSTANT_OF_15O = 0.005670305 % for speed on heap        
         LAMBDA                = 0.95        % brain-blood equilibrium partition coefficient, mL/mL, Herscovitch, Raichle, JCBFM (1985) 5:65
         RBC_FACTOR            = 0.766       % per Tom Videen, metproc.inc, line 193

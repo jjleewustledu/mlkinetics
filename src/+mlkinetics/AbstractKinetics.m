@@ -49,10 +49,10 @@ classdef AbstractKinetics < mlbayesian.AbstractMcmcStrategy
             end
         end
         function f    = invs_to_mLmin100g(f)
-            f = 100 * 60 * f / mlpet.AutoradiographyBuilder.BRAIN_DENSITY;
+            f = 100 * 60 * f / mlpet.AutoradiographyBuilder.DENSITY_BRAIN;
         end
         function f    = mLmin100g_to_invs(f)
-            f = mlpet.AutoradiographyBuilder.BRAIN_DENSITY * f / 6000;
+            f = mlpet.AutoradiographyBuilder.DENSITY_BRAIN * f / 6000;
         end
     end
     
