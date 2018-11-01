@@ -1,4 +1,4 @@
-classdef (Abstract) IKineticsSolver < mlanalysis.ISolver 
+classdef (Abstract) IKineticsSolver < mlbayesian.ISolver 
 	%% IKINETICSSOLVER  
 
 	%  $Revision$
