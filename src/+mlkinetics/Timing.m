@@ -82,7 +82,10 @@ classdef Timing < handle & mlkinetics.ITiming
         end
         function        set.time0(this, s)
             assert(isscalar(s));
+            assert(s <= this.times(end), ...
+                'mlkinetics:ValueError', 'Timing.set.time0 received request for time0 < times(end)');
             if (s < this.times(1)) % trap -inf
+                warning('mlkinetics:ValueWarning', 'Timing.set.time0 received request for time0 < times(1)');
                 this.time0_ = this.times(1);
                 return
             end
@@ -99,7 +102,10 @@ classdef Timing < handle & mlkinetics.ITiming
         end
         function        set.timeF(this, s)
             assert(isscalar(s));
+            assert(s >= this.times(1), ...
+                'mlkinetics:ValueError', 'Timing.set.timeF received request for timeF < times(1)')
             if (s > this.times(end)) % trap inf
+                warning('mlkinetics:ValueWarning', 'Timing.set.timeF received request for timeF > times(end)');
                 this.timeF_ = this.times(end);
                 return
             end
@@ -162,7 +168,7 @@ classdef Timing < handle & mlkinetics.ITiming
             this.time0 = this.timing2num(s - this.datetimeMeasured_) + this.times(1);
         end
         function g    = get.datetimeF(this)
-            g = this.datetime0 + this.num2duration(this.timeF - this.times(1));
+            g = this.datetimeMeasured_ + this.num2duration(this.timeF - this.times(1));
         end
         function        set.datetimeF(this, s)
             assert(isscalar(s));
@@ -190,6 +196,10 @@ classdef Timing < handle & mlkinetics.ITiming
         function g    = get.datetimeMeasured(this)
             g = this.datetimeMeasured_;
         end
+        function        set.datetimeMeasured(this, s)
+            assert(this.isniceDat(s));
+            this.datetimeMeasured_ = s;
+        end
         function g    = get.dt(this)
             if (~isempty(this.dt_) && this.dt_ > this.MIN_DT)
                 g = this.dt_;
@@ -206,12 +216,12 @@ classdef Timing < handle & mlkinetics.ITiming
         
         %%
 		  
-        function d    = datetime(this) 
+        function d    = datetime(this)
             %% DATETIME is synonymous with datetimes            
             
             d = this.datetimeMeasured_ + this.num2duration(this.times - this.times(1)); 
         end
-        function d    = duration(this) 
+        function d    = duration(this)
             %% DURATION all times as seconds
             
             d = this.num2duration(this.times);
@@ -266,16 +276,18 @@ classdef Timing < handle & mlkinetics.ITiming
             addParameter(ip, 'times', 0); 
             addParameter(ip, 'time0', -inf);
             addParameter(ip, 'timeF',  inf);
-            addParameter(ip, 'dt', [], @isnumeric);
+            addParameter(ip, 'dt', 0, @isnumeric);
             parse(ip, varargin{:});
             this.datetimeMeasured_ = ip.Results.datetimeMeasured;
             if (isempty(this.datetimeMeasured_.TimeZone))
                 this.datetimeMeasured_.TimeZone = this.PREFERRED_TIMEZONE;
             end
+            warning('off', 'mlkinetics:ValueWarning');
             this.times = ip.Results.times;
             this.time0 = ip.Results.time0;
             this.timeF = ip.Results.timeF;
             this.dt    = ip.Results.dt;
+            warning('on', 'mlkinetics:ValueWarning');
  		end
  	end 
 
