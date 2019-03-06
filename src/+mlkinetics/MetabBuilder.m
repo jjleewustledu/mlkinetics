@@ -16,7 +16,7 @@ classdef (Abstract) MetabBuilder < handle & mlpipeline.AbstractHandleBuilder
  			%% METABBUILDER
  			%  @param .
 
- 			this = this@mlpipeline.AbstractBuilder(varargin{:});
+ 			this = this@mlpipeline.AbstractHandleBuilder(varargin{:});
  		end
     end 
     

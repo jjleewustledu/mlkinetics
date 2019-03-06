@@ -257,7 +257,7 @@ classdef AbstractF18DeoxyGlucoseKinetics < mlkinetics.AbstractGlucoseKinetics
             
             subjid = this.sessionData.sessionFolder;
             sp = summ.stdParams;
-            v = this.sessionData.vnumber;
+            v = 0;
             roi = this.translateYeo7(this.sessionData.parcellation); 
             T = cell2table({subjid, v, roi, this.sessionData.plasmaGlucose, summ.hct, this.bloodGlucose, 100*this.v1, ...
                 this.k1, sp(2), this.k2, sp(3), this.k3, sp(4), this.k4, sp(5), this.u0, sp(6), ...
