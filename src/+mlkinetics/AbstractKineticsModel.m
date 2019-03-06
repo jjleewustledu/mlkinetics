@@ -108,7 +108,7 @@ classdef AbstractKineticsModel < mlbayesian.NullModel & mlkinetics.IKineticsMode
         end
         function this = setupFilesystem(this)
             %% for mlio.AbstractIO
-            this.filepath_ = this.sessionData.vLocation;
+            this.filepath_ = this.sessionData.sessionPath;
             this.fileprefix_ = strrep(class(this), '.', '_');
             if (this.datedFilename_)
                 this.fileprefix_ = [this.fileprefix_ '_' datestr(now, 30)];
