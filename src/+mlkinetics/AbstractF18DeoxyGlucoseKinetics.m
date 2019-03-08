@@ -136,7 +136,7 @@ classdef AbstractF18DeoxyGlucoseKinetics < mlkinetics.AbstractGlucoseKinetics
         end
         function this = updateSummary(this)
             s.class = class(this);
-            s.datestr = datestr(now, 30);
+            s.datestr = mydatetimestr(now);
             if (~isempty(this.theSolver))
                 s.bestFitParams = this.bestFitParams;
                 s.meanParams = this.meanParams;

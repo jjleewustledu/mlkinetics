@@ -111,7 +111,7 @@ classdef AbstractKineticsModel < mlbayesian.NullModel & mlkinetics.IKineticsMode
             this.filepath_ = this.sessionData.sessionPath;
             this.fileprefix_ = strrep(class(this), '.', '_');
             if (this.datedFilename_)
-                this.fileprefix_ = [this.fileprefix_ '_' datestr(now, 30)];
+                this.fileprefix_ = [this.fileprefix_ '_' mydatetimestr(now)];
             end
             this.filesuffix_ = '.mat';
         end    
