@@ -8,10 +8,11 @@ classdef Timing < handle & mlkinetics.ITiming
  	
     properties (Constant)
         MIN_DT = 0.001 % 1 msec
-        PREFERRED_TIMEZONE = 'America/Chicago'
     end
     
 	properties (Dependent)
+        preferredTimeZone
+        
         times            % all stored times in sec
         time0            % adjustable time window start; >= time(1)                
         timeF            % adjustable time window end; <= times(end)
@@ -63,6 +64,10 @@ classdef Timing < handle & mlkinetics.ITiming
 	methods 
         
         %% GET/SET
+        
+        function g    = get.preferredTimeZone(~)
+            g = mlpipeline.ResourcesRegistry.instance().preferredTimeZone;
+        end
         
         function g    = get.times(this)
             g = this.times_;
@@ -159,7 +164,7 @@ classdef Timing < handle & mlkinetics.ITiming
             assert(isscalar(s));
             assert(this.isniceDat(s));
             if (isempty(s.TimeZone))
-                s.TimeZone = this.PREFERRED_TIMEZONE;
+                s.TimeZone = this.preferredTimeZone;
             end
             if (s < this.datetimeMeasured_)
                 this.time0 = this.times(1);
@@ -174,7 +179,7 @@ classdef Timing < handle & mlkinetics.ITiming
             assert(isscalar(s));
             assert(this.isniceDat(s));
             if (isempty(s.TimeZone))
-                s.TimeZone = this.PREFERRED_TIMEZONE;
+                s.TimeZone = this.preferredTimeZone;
             end
             if (s > this.datetimeMeasured_ + this.num2duration(this.times(end) - this.times(1)))
                 this.timeF = this.times(end);
@@ -280,7 +285,7 @@ classdef Timing < handle & mlkinetics.ITiming
             parse(ip, varargin{:});
             this.datetimeMeasured_ = ip.Results.datetimeMeasured;
             if (isempty(this.datetimeMeasured_.TimeZone))
-                this.datetimeMeasured_.TimeZone = this.PREFERRED_TIMEZONE;
+                this.datetimeMeasured_.TimeZone = this.preferredTimeZone;
             end
             warning('off', 'mlkinetics:ValueWarning');
             this.times = ip.Results.times;
