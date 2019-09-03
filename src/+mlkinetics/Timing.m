@@ -88,7 +88,7 @@ classdef Timing < handle & mlkinetics.ITiming
         function        set.time0(this, s)
             assert(isscalar(s));
             assert(s <= this.times(end), ...
-                'mlkinetics:ValueError', 'Timing.set.time0 received request for time0 < times(end)');
+                'mlkinetics:ValueError', 'Timing.set.time0 received request for time0 > times(end)');
             if (s < this.times(1)) % trap -inf
                 warning('mlkinetics:ValueWarning', 'Timing.set.time0 received request for time0 < times(1)');
                 this.time0_ = this.times(1);
@@ -134,14 +134,14 @@ classdef Timing < handle & mlkinetics.ITiming
             g = 1:length(this.times);
         end
         function g    = get.index0(this)
-            [~,g] = max(this.times >= round(this.time0));
+            [~,g] = max(this.times >= floor(this.time0));
         end
         function        set.index0(this, s)
             assert(this.isniceScalNum(s));
             this.time0 = this.times(s);
         end
         function g    = get.indexF(this)
-            [~,g] = max(this.times >= round(this.timeF));
+            [~,g] = max(this.times >= floor(this.timeF));
         end
         function        set.indexF(this, s)
             assert(this.isniceScalNum(s));
@@ -277,21 +277,23 @@ classdef Timing < handle & mlkinetics.ITiming
 
  			ip = inputParser;
             ip.KeepUnmatched = true;
-            addParameter(ip, 'datetimeMeasured', NaT, @isdatetime);
+            addParameter(ip, 'datetimeMeasured', NaT, @(x) isdatetime(x) && ~isnat(x));
             addParameter(ip, 'times', 0); 
             addParameter(ip, 'time0', -inf);
             addParameter(ip, 'timeF',  inf);
             addParameter(ip, 'dt', 0, @isnumeric);
             parse(ip, varargin{:});
-            this.datetimeMeasured_ = ip.Results.datetimeMeasured;
-            if (isempty(this.datetimeMeasured_.TimeZone))
+            ipr = ip.Results;
+            
+            this.datetimeMeasured_ = ipr.datetimeMeasured;
+            if isempty(this.datetimeMeasured_.TimeZone)
                 this.datetimeMeasured_.TimeZone = this.preferredTimeZone;
             end
             warning('off', 'mlkinetics:ValueWarning');
-            this.times = ip.Results.times;
-            this.time0 = ip.Results.time0;
-            this.timeF = ip.Results.timeF;
-            this.dt    = ip.Results.dt;
+            this.times = ipr.times;
+            this.time0 = ipr.time0;
+            this.timeF = ipr.timeF;
+            this.dt    = ipr.dt;
             warning('on', 'mlkinetics:ValueWarning');
  		end
  	end 
