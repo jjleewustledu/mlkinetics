@@ -14,9 +14,9 @@ classdef Huang1980WithHMC < mlstatistics.HMC
 	properties
  		artery_interpolated
         csv_filename = '/Users/jjlee/Tmp/DeepNetFCProject/PET/ses-E03056/FDG_DT20190523132832.000000-Converted-AC/makima_ksactivities.csv'
-        trueNoiseSigma = 1
         recon_end_times = [10., 23., 37., 53., 70., 89., 109., 131., 154., 179., 205., 233., 262., 293., 325., 359., 394., 431., 469., 509., 550., 593., 637., 683., 730., 779., 829., 881., 934., 990., 1047., 1106., 1166., 1228., 1291., 1356., 1422., 1490., 1559., 1630., 1702., 1776., 1852., 1930., 2009., 2090., 2172., 2256., 2341., 2428., 2516., 2607., 2699., 2793., 2888., 2985., 3083., 3183., 3284., 3388., 3493., 3601.]
         recon_times
+        true_noise_sigma = 0.05
         true_ks
         true_qs
     end
@@ -161,8 +161,8 @@ classdef Huang1980WithHMC < mlstatistics.HMC
         end
         
         function [logpdf, gradlogpdf] = logPosterior( ...
-                Parameters, tst, qst, arteryt_interpolated, ...
-                kstPriorMean, kstPriorSigma, ...
+                Parameters, ts, qs, artery_interpolated, ...
+                logks_prior_mean, logks_prior_sigma, ...
                 LogNoiseVarianceMean, LogNoiseVarianceSigma)
             %% The |logPosterior| function returns the logarithm of the product of a
             %  normal likelihood and a normal prior for the model. The input
@@ -174,43 +174,35 @@ classdef Huang1980WithHMC < mlstatistics.HMC
             import mlkinetics.Huang1980WithHMC.normalPrior
             
             % Unpack the parameter vector
-            kst              = Parameters(1:end-1); % 4 x 1
+            logks            = Parameters(1:end-1)'; % 4 x 1
             LogNoiseVariance = Parameters(end);
             
-            % Unpack huang1980 results
-            [dqs_,qs_] = grad_huang1980_sampled(kst', arteryt_interpolated', tst');
+            % Unpack huang1980 proposals
+            [dqs_,qs_] = grad_huang1980_sampled(exp(logks), artery_interpolated, ts);
             
             % Compute the log likelihood and its gradient
-            Sigma                   = sqrt(exp(LogNoiseVariance));
-            Z                       = (qst - qs_')/Sigma; % 62 x 1
+            Sigma                   = sqrt(exp(LogNoiseVariance)); % scalar
+            Z                       = (qs' - qs_')/Sigma; % 62 x 1
             loglik                  = sum(-log(Sigma) - .5*log(2*pi) - .5*Z.^2); % scalar
             gradKst1                = dqs_*Z/Sigma; % 4 x 1
             gradLogNoiseVariance1	= sum(-.5 + .5*(Z.^2)); % scalar
             
             % Compute log priors and gradients
-            [LPkst, gradKst2]                      = normalPrior(kst, kstPriorMean, kstPriorSigma);
-            [LPLogNoiseVar, gradLogNoiseVariance2] = normalPrior(LogNoiseVariance, LogNoiseVarianceMean, LogNoiseVarianceSigma);
-            logprior                               = LPkst + LPLogNoiseVar;
+            [LPlogkst, gradLogKst2]                = normalPrior(logks', logks_prior_mean', logks_prior_sigma');
+            [LPLogNoiseVar, gradLogNoiseVariance2] = normalPrior(LogNoiseVariance, ...
+                                                                 LogNoiseVarianceMean, ...
+                                                                 LogNoiseVarianceSigma);
+            logprior                               = LPlogkst + LPLogNoiseVar;
             
             % Return the log posterior and its gradient
-            logpdf               = loglik + logprior;
-            gradKst              = gradKst1 + gradKst2;
+            logpdf               = loglik + logprior; % scalar
+            gradKst              = gradKst1 + gradLogKst2;
             gradLogNoiseVariance = gradLogNoiseVariance1 + gradLogNoiseVariance2;
-            gradlogpdf           = [gradKst;gradLogNoiseVariance];
+            gradlogpdf           = [gradKst;gradLogNoiseVariance]; % 5 x 1
         end
     end
 
 	methods 
-        function [MAPPars,finfo] = estimateMAP(this, varargin)
-            [MAPPars,finfo] = estimateMAP(this.smp, varargin{:});
-            assert(all(MAPPars(1:end-1) > 0), ...
-                'Huang1980WithHMC.drawTunedSamples.MAPPars->%s', mat2str(MAPPars))
-            fprintf('estimateMAP().MAPPars:  %s\n\n', mat2str(MAPPars))
-            this.plotMAPIterations(finfo)
-        end
-        function mp = jitterMAPPars(this)
-            mp = this.MAPPars + this.jitterScale .* randn(size(this.MAPPars));
-            mp(1:end-1) = abs(mp(1:end-1));
         function this = build_recon_times(this)
             this.recon_times = this.recon_end_times;
             return
@@ -222,8 +214,12 @@ classdef Huang1980WithHMC < mlstatistics.HMC
                     (this.recon_end_times(it) - this.recon_end_times(it-1))/2;
             end
         end
-        function plotModelResults(this)
-            qs = this.huang1980_sampled(this.results.Mean(1:4), this.artery_interpolated, this.recon_times);
+%        function mp = jitter_MAPPars(this)
+%            mp = this.MAPPars + this.jitterScale .* randn(size(this.MAPPars));
+%            mp(1:end-1) = abs(mp(1:end-1));
+%        end
+        function plot_model_results(this)
+            qs = this.huang1980_sampled(exp(this.results.Mean(1:4)), this.artery_interpolated, this.recon_times);
             figure
             plot(this.recon_times, qs, ':o', this.recon_times, this.true_qs)
             title('mlkinetics.Huang1980WithHMC.plot_model_results()')
@@ -252,42 +248,45 @@ classdef Huang1980WithHMC < mlstatistics.HMC
             rng('default') %For reproducibility
             this.true_ks = this.rand_ks();
             this.true_qs = this.huang1980_sampled(this.true_ks, this.artery_interpolated, this.recon_times);
+            this.true_qs = this.true_qs * (1 + this.true_noise_sigma*rand());
             
             % Choose the means and standard deviations of the Gaussian priors.
-            ksPriorMean = [0.1 0.1 0.1 1e-4];
-            ksPriorSigma = [0.2 0.2 0.2 2e-4];
+            logks_prior_mean = log([0.1 0.1 0.1 1e-4]);
+            logks_prior_sigma = [1 1 1 1];
+            assert(all(logks_prior_sigma > 0))
             LogNoiseVarianceMean = 0;
-            LogNoiseVarianceSigma = 0.001;
+            LogNoiseVarianceSigma = 1;
+            assert(all(LogNoiseVarianceSigma > 0))
             
             % Save a function |logPosterior| on the MATLAB(R) path that returns the
             % logarithm of the product of the prior and likelihood, and the gradient of
             % this logarithm.  Then, call the function with arguments to define the |logpdf|
             % input argument to the |hmcSampler| function.
             logpdf = @(Parameters) logPosterior( ...
-                Parameters, this.recon_times', this.true_qs', this.artery_interpolated', ...
-                ksPriorMean', ksPriorSigma', ...
+                Parameters, this.recon_times, this.true_qs, this.artery_interpolated, ...
+                logks_prior_mean, logks_prior_sigma, ...
                 LogNoiseVarianceMean, LogNoiseVarianceSigma);
             
             % Define the initial point to start sampling from, and then call the
             % |hmcSampler| function to create the Hamiltonian sampler as a
             % |HamiltonianSampler| object. Display the sampler properties.
-            starting_ks = this.rand_ks();
-            LogNoiseVariance = 0.001 * randn;
-            startpoint = [starting_ks'; LogNoiseVariance];
-            this.smp = hmcSampler(logpdf, startpoint, varargin{:});            
-            %this.smp.StepSize = 0.01; % speed up tuning
-            %this.smp.NumSteps = 40;   % speed up tuning
+            startpoint = [log(this.rand_ks())'; randn()];
+            this.smp = hmcSampler(logpdf, startpoint, varargin{:});
             fprintf('Huang1980WithHMC().smp:\n'); disp(this.smp)
             
             [this.MAPPars,this.fitinfo] = this.estimateMAP();
-            this.jitterScale = [0.2; 0.2; 0.2; 2e-4; LogNoiseVarianceSigma];
-            this = this.drawTunedSamples('NumChains', 4, 'Burnin', 500, 'NumSamples', 1000);
+            this.jitterScale = [[1; 1; 1; 1]; LogNoiseVarianceSigma];
+            %this.smp.StepSize = 2e-2;
+            %this.smp.NumSteps = 50;
+            this = this.drawTunedSamples('NumChains', 4, 'Burnin', 500, 'NumSamples', 1500);
             this = this.diagnostics;
             fprintf('\n')
             fprintf('Huang1980WithHMC().results:\n\n'); disp(this.results)
-            fprintf('true [ks(:) log(noiseSigma^2)]:  %s\n', ...
-                mat2str([this.true_ks log(this.trueNoiseSigma^2)]))
-            this.plotModelResults()
+            fprintf('results [ks(:) noise_sigma]:  %s\n', ...
+                mat2str(exp(this.results.Mean)'));
+            fprintf('true [ks(:) noise_sigma]:  %s\n', ...
+                mat2str([this.true_ks this.true_noise_sigma]))
+            this.plot_model_results()
             
             fprintf('Huang1980WithHMC().this:\n'); disp(this)
             toc
