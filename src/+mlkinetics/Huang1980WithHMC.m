@@ -52,7 +52,6 @@ classdef Huang1980WithHMC < mlstatistics.HMC
             import mlkinetics.Huang1980WithHMC.huang1980_solution  
             qs = huang1980_solution(ks, artery_interpolated);
             qs = qs(ceil(recon_times));
-            % qs(qs < 0) = 1e-3; % kBq/mL
         end
         function [dqs,qs] = grad_huang1980_solution(ks, artery_interpolated)
             %import mlkinetics.Huang1980WithHMC.reluPars
