@@ -14,8 +14,9 @@ classdef Huang1980WithHMC < mlstatistics.HMC
 	properties
  		artery_interpolated
         csv_filename = '/Users/jjlee/Tmp/DeepNetFCProject/PET/ses-E03056/FDG_DT20190523132832.000000-Converted-AC/makima_ksactivities.csv'
-        recon_times = [10., 23., 37., 53., 70., 89., 109., 131., 154., 179., 205., 233., 262., 293., 325., 359., 394., 431., 469., 509., 550., 593., 637., 683., 730., 779., 829., 881., 934., 990., 1047., 1106., 1166., 1228., 1291., 1356., 1422., 1490., 1559., 1630., 1702., 1776., 1852., 1930., 2009., 2090., 2172., 2256., 2341., 2428., 2516., 2607., 2699., 2793., 2888., 2985., 3083., 3183., 3284., 3388., 3493., 3601.]
         trueNoiseSigma = 1
+        recon_end_times = [10., 23., 37., 53., 70., 89., 109., 131., 154., 179., 205., 233., 262., 293., 325., 359., 394., 431., 469., 509., 550., 593., 637., 683., 730., 779., 829., 881., 934., 990., 1047., 1106., 1166., 1228., 1291., 1356., 1422., 1490., 1559., 1630., 1702., 1776., 1852., 1930., 2009., 2090., 2172., 2256., 2341., 2428., 2516., 2607., 2699., 2793., 2888., 2985., 3083., 3183., 3284., 3388., 3493., 3601.]
+        recon_times
         true_ks
         true_qs
     end
@@ -211,6 +212,16 @@ classdef Huang1980WithHMC < mlstatistics.HMC
         function mp = jitterMAPPars(this)
             mp = this.MAPPars + this.jitterScale .* randn(size(this.MAPPars));
             mp(1:end-1) = abs(mp(1:end-1));
+        function this = build_recon_times(this)
+            this.recon_times = this.recon_end_times;
+            return
+            
+            this.recon_times = nan(size(this.recon_end_times));
+            this.recon_times(1) = this.recon_end_times(1)/2;
+            for it = 2:length(this.recon_end_times)
+                this.recon_times(it) = this.recon_end_times(it-1) + ...
+                    (this.recon_end_times(it) - this.recon_end_times(it-1))/2;
+            end
         end
         function plotModelResults(this)
             qs = this.huang1980_sampled(this.results.Mean(1:4), this.artery_interpolated, this.recon_times);
@@ -234,6 +245,7 @@ classdef Huang1980WithHMC < mlstatistics.HMC
             
             tic
             this.artery_interpolated = readmatrix(this.csv_filename);
+            this = this.build_recon_times();
             this.NumPredictors = 4;
             
             % Use these parameter values to create a normally distributed sample data
