@@ -1,11 +1,16 @@
 classdef Huang1980WithHMC < mlstatistics.HMC
 	%% HUANG1980WITHHMC  
+    %  Background activity measured by well counter ~ 5 Bq/mL; 
 
 	%  $Revision$
  	%  was created 27-Dec-2019 14:40:14 by jjlee,
  	%  last modified $LastChangedDate$ and placed into repository /Users/jjlee/MATLAB-Drive/mlkinetics/src/+mlkinetics.
  	%% It was developed on Matlab 9.7.0.1261785 (R2019b) Update 3 for MACI64.  Copyright 2019 John Joowon Lee.
  	
+    properties (Constant)
+        WELL_BACKGROUND = 0.005 % kBq/mL
+    end
+    
 	properties
  		artery_interpolated
         csv_filename = '/Users/jjlee/Tmp/DeepNetFCProject/PET/ses-E03056/FDG_DT20190523132832.000000-Converted-AC/makima_ksactivities.csv'
@@ -211,9 +216,9 @@ classdef Huang1980WithHMC < mlstatistics.HMC
             qs = this.huang1980_sampled(this.results.Mean(1:4), this.artery_interpolated, this.recon_times);
             figure
             plot(this.recon_times, qs, ':o', this.recon_times, this.true_qs)
-            title('mlkinetics.Huang1980WithHMC.plotModelResults()')
+            title('mlkinetics.Huang1980WithHMC.plot_model_results()')
             xlabel('time / s')
-            ylabel('activity / (Bq/mL)')
+            ylabel('activity / (kBq/mL)')
         end
         function g = rand_ks(this)
             g = this.reluPars([0.2 * rand() 0.3 * rand() 0.1 * rand() 5e-4 * rand()], this.NumPredictors);
