@@ -1,88 +1,173 @@
 classdef Huang1980 
-	%% HUANG1980 
-    %  See also:  American Journal of Physiology-Endocrinology and Metabolism 238(1) E69-E82 (1980).
+	%% HUANG1980  
 
 	%  $Revision$
- 	%  was created 16-Feb-2018 19:05:50 by jjlee,
- 	%  last modified $LastChangedDate$ and placed into repository /Users/jjlee/MATLAB-Drive/mlraichle/src/+mlraichle.
- 	%% It was developed on Matlab 9.2.0.538062 (R2017a) for MACI64.  Copyright 2018 John Joowon Lee.
+ 	%  was created 01-Jan-2020 21:54:14 by jjlee,
+ 	%  last modified $LastChangedDate$ and placed into repository /Users/jjlee/MATLAB-Drive/mlkinetics/src/+mlkinetics.
+ 	%% It was developed on Matlab 9.7.0.1261785 (R2019b) Update 3 for MACI64.  Copyright 2020 John Joowon Lee.
  	
-    properties (Constant)
-        V = 0.038 % blood volume fraction
+	properties
+ 		aif
+        cbv
+        glc
+        hct
+ 		LC = 0.81 % Wu, et al., Molecular Imaging and Biology, 5(1), 32-41, 2003.
+        scanner
     end
     
-    properties   
-        LC = 0.64 % Powers, et al., JCBFM 31(5) 1223-1228, 2011.
-        %LC = 0.81 % Wu, et al., Molecular Imaging and Biology, 5(1), 32-41, 2003.
-        nSamples = [] % for testing
+    properties (Dependent)
+        artery_interpolated
+        recon_times
     end
-
+    
     methods (Static)
-        function alpha_ = a(k2, k3, k4)
-            k234   = k2 + k3 + k4;
-            alpha_ = k234 - sqrt(k234^2 - 4*k2*k4);
-            alpha_ = alpha_/2;
-        end
-        function beta_  = b(k2, k3, k4)
-            k234  = k2 + k3 + k4;
-            beta_ = k234 + sqrt(k234^2 - 4*k2*k4);
-            beta_ = beta_/2;
-        end
-        function q      = q2(Cp, K1, a, b, k4, t)
-            scale = K1/(b - a);
-            q = scale * conv((k4 - a)*exp(-a*t) + (b - k4)*exp(-b*t), Cp);
-            q = q(1:length(t));
-        end
-        function q      = q3(Cp, K1, a, b, k3, t)
-            scale = k3*K1/(b - a);
-            q = scale * conv(exp(-a*t) - exp(-b*t), Cp);
-            q = q(1:length(t));
-        end
-        function qT     = qpet(ks, Cp, t)
-            K1 = ks(1);
+        function qs = huang1980_solution(ks, v1, artery_interpolated)
+            k1 = ks(1);
             k2 = ks(2);
             k3 = ks(3);
-            k4 = ks(4);  
-            Dt = ks(5); % shift Cp
+            k4 = ks(4);
+            scale = 1;
             
-            import mlkinetics.*;
-            Cp = Huang1980.slide(Cp, t, Dt);
-            a  = Huang1980.a(k2, k3, k4);
-            b  = Huang1980.b(k2, k3, k4);
-            qT = Huang1980.q2(Cp, K1, a, b, k4, t) + ...
-                 Huang1980.q3(Cp, K1, a, b, k3, t) + Huang1980.V*Cp; 
-            qT = double(qT);
-        end     
-        function conc    = slide(conc, t, Dt)
-            %% SLIDE slides discretized function conc(t) to conc(t - Dt);
-            %  Dt > 0 will slide conc(t) towards later times t.
-            %  Dt < 0 will slide conc(t) towards earlier times t.
-            %  It works for inhomogeneous t according to the ability of pchip to interpolate.
-            %  It may not preserve information according to the Nyquist-Shannon theorem.  
-            
-            import mlbayesian.*;
-            [conc,trans] = AbstractBayesianStrategy.ensureRow(conc);
-            t            = AbstractBayesianStrategy.ensureRow(t);
-            
-            tspan = t(end) - t(1);
-            tinc  = t(2) - t(1);
-            t_    = [(t - tspan - tinc) t];   % prepend times
-            conc_ = [zeros(size(conc)) conc]; % prepend zeros
-            conc_(isnan(conc_)) = 0;
-            conc  = pchip(t_, conc_, t - Dt); % interpolate onto t shifted by Dt; Dt > 0 shifts to right
-            
-            if (trans)
-                conc = conc';
-            end
-        end   
-        function Cp  = wb2plasma(Cwb, hct, t)
-            if (hct > 1)
-                hct = hct/100;
-            end
-            import mlkinetics.Huang1980.*;
-            Cp = Cwb./(1 + hct*(rbcOverPlasma(t) - 1));
+            n = length(artery_interpolated);
+            times = 0:1:n-1;
+            k234 = k2 + k3 + k4;         
+            bminusa = sqrt(k234^2 - 4 * k2 * k4);
+            alpha = 0.5 * (k234 - bminusa);
+            beta  = 0.5 * (k234 + bminusa);   
+            conva = conv(exp(-alpha .* times), artery_interpolated);
+            convb = conv(exp(-beta  .* times), artery_interpolated);
+            conva = conva(1:n);
+            convb = convb(1:n);
+            conv2 = (k4 - alpha) .* conva + (beta - k4) .* convb;
+            conv3 =                 conva -                convb;
+            q2 = (k1 / bminusa)      * conv2;
+            q3 = (k3 * k1 / bminusa) * conv3;
+            qs = v1 * (artery_interpolated + scale * (q2 + q3));            
         end
-        function rop = rbcOverPlasma(t)
+        function qs = huang1980_sampled(ks, v1, artery_interpolated, recon_times)
+            import mlkinetics.Huang1980.huang1980_solution  
+            qs = huang1980_solution(ks, v1, artery_interpolated);
+            qs = qs(ceil(recon_times));
+        end
+        function [dqs,qs] = grad_huang1980_solution(ks, v1, artery_interpolated)
+            k1 = ks(1);
+            k2 = ks(2);
+            k3 = ks(3);
+            k4 = ks(4);
+            scale = 1;
+            
+            n = length(artery_interpolated);
+            times = 0:1:n-1;
+            k234 = k2 + k3 + k4;
+            bminusa = sqrt(k234^2 - 4 * k2 * k4);
+            alpha = 0.5 * (k234 - bminusa);
+            beta  = 0.5 * (k234 + bminusa);
+            conva  = conv(exp(-alpha .* times),          artery_interpolated);
+            convb  = conv(exp(-beta  .* times),          artery_interpolated);
+            convta = conv(exp(-alpha .* times) .* times, artery_interpolated);
+            convtb = conv(exp(-beta  .* times) .* times, artery_interpolated);
+            conva  = conva( 1:n);
+            convb  = convb( 1:n);  
+            convta = convta(1:n);
+            convtb = convtb(1:n);            
+            conv2  = (k4 - alpha) * conva + (beta - k4) * convb;
+            conv3  =                conva -               convb;
+            
+            q2 = (k1 / bminusa)      * conv2;
+            q3 = (k3 * k1 / bminusa) * conv3;
+            qs = v1 * (artery_interpolated + scale * (q2 + q3)); 
+
+            part_bminusa_k2 = (k234 - 2 * k4) / bminusa;
+            part_a_k2 = 0.5 * (1 - part_bminusa_k2);
+            part_b_k2 = 0.5 * (1 + part_bminusa_k2);
+
+            part_bminusa_k3 =  k234 / bminusa;
+            part_a_k3 = 0.5 * (1 - part_bminusa_k3);
+            part_b_k3 = 0.5 * (1 + part_bminusa_k3);
+
+            part_bminusa_k4 = (k234 - 2 * k2) / bminusa;
+            part_a_k4 = 0.5 * (1 - part_bminusa_k4);
+            part_b_k4 = 0.5 * (1 + part_bminusa_k4);
+            
+            part_q2_k1 = (1/bminusa) * conv2;
+            
+            part_q2_k2 = ...
+                -(k1 * part_bminusa_k2 / bminusa^2) * conv2 + ...
+                 (k1 / bminusa) * ( ...
+                     part_a_k2 * (-conva - (k4 - alpha) * convta) + ...
+                     part_b_k2 * ( convb - (beta - k4)  * convtb) ...
+                 );
+            
+            part_q2_k3 = ...
+                -(k1 * part_bminusa_k3 / bminusa^2) * conv2 + ...
+                 (k1 / bminusa) * ( ...
+                     part_a_k3 * (-conva - (k4 - alpha) * convta) + ...
+                     part_b_k3 * ( convb - (beta - k4)  * convtb) ...
+                 );
+            
+            part_q2_k4 = ...
+                -(k1 * part_bminusa_k4 / bminusa^2) * conv2 + ...
+                 (k1 / bminusa) * ( ...
+                     conva - ...
+                     part_a_k4 * conva -...
+                     part_a_k4 * (k4 - alpha) * convta + ...
+                     part_b_k4 * convb - ...
+                     convb - ...
+                     part_b_k4 * (beta - k4)  * convtb ...
+                 );
+
+            part_q3_k1 = (k3 / bminusa) * conv3;
+            
+            part_q3_k2 = ...
+                -(k3 * k1 * part_bminusa_k2 / bminusa^2) * conv3 - ...
+                 (k3 * k1 / bminusa) * ( ...
+                     -part_a_k2 * convta + ...
+                      part_b_k2 * convtb ...
+                 );
+            
+            part_q3_k3 = ...
+                (k1 / bminusa) * conv3 -  ...
+                (k3 * k1 * part_bminusa_k3 / bminusa^2) * conv3 + ...
+                (k3 * k1 / bminusa) * ( ...
+                    -part_a_k3 * convta + ...
+                     part_b_k3 * convtb ...
+                );
+            
+            part_q3_k4 = ...
+                -(k3 * k1 * part_bminusa_k4 / bminusa^2) * conv3 + ...
+                 (k3 * k1 / bminusa) * ( ...
+                     -part_a_k4 * convta + ...
+                      part_b_k4 * convtb ...
+                 );
+            
+            part_qs_k1 = part_q2_k1 + part_q3_k1; 
+            part_qs_k2 = part_q2_k2 + part_q3_k2; 
+            part_qs_k3 = part_q2_k3 + part_q3_k3; 
+            part_qs_k4 = part_q2_k4 + part_q3_k4;
+            dqs = v1 * scale * [part_qs_k1; part_qs_k2; part_qs_k3; part_qs_k4];
+        end
+        function [dqs,qs] = grad_huang1980_sampled(ks, v1, artery_interpolated, recon_times)
+            import mlkinetics.Huang1980.grad_huang1980_solution  
+            [dqs,qs] = grad_huang1980_solution(ks, v1, artery_interpolated);
+            dqs = dqs(:, ceil(recon_times)); % kBq*s/mL
+            qs  =  qs(:, ceil(recon_times)); % kBq/mL
+        end     
+        
+        function logp = log_likelihood(Z, Sigma)
+            logp = sum(-log(Sigma) - 0.5*log(2*pi) - 0.5*Z.^2); % scalar
+        end
+        function dks  = grad_ks(dqs, Z, Sigma)
+            dks = dqs*Z./Sigma; % 4 x 1
+        end
+        
+        function midt = end_times_to_mid_times(endt)
+            midt = nan(size(endt));
+            midt(1) = endt(1)/2;
+            for it = 2:length(endt)
+                midt(it) = endt(it-1) + (endt(it) - endt(it-1))/2;
+            end
+        end
+        function rop  = rbc_over_plasma(t)
             %% RBCOVERPLASMA is [FDG(RBC)]/[FDG(plasma)]
             
             t   = t/60;      % sec -> min
@@ -92,216 +177,65 @@ classdef Huang1980
             tau = 50.052431; % FINAL STATS param tau mean  116.239401	 std 51.979195
             rop = a0 + a1*t + a2*(1 - exp(-t/tau));
         end
-    end
-    
-	methods 
-        function [cmrglc,ks,synth]  = buildCmrglcMap(this) 
-            %  @return units of [CMRglc] == (mg/dL)(1/min)(mL/hg).
-            
-            warning('off', 'optimlib:lsqlin:WillRunDiffAlg');
-            switch (this.resampler_.ndims) % R^{d+1}
-                case 2
-                    [Ki,ks,synth] = this.buildCmrglcMap1;
-                case 3
-                    [Ki,ks,synth] = this.buildCmrglcMap2;
-                case 4
-                    [Ki,ks,synth] = this.buildCmrglcMap3;
-                otherwise
-                    error('mlkinetics:unsupportedSwitchcase', ...
-                          'Huang1980.buildCmrglcMap.this.scanner_.mask.ndims->%i', this.resampler_.ndims);
-            end 
-            warning('on', 'optimlib:lsqlin:WillRunDiffAlg');
-            
-            % assemble physiologic units
-            cmrglc = Ki * this.glc_ / this.LC; % [CMRglc] := (mL/g/min) (mg/dL)
-            if (this.useSI_)
-                cmrglc = 0.05551 * cmrglc; % 100 * % g to hg conversion issue?
-                % [CMRglc] := \mumol/(min hg) ==
-                % (1/min)(mL/g)(mg/dL) x 100 (g/hg) x 0.05551 [\mumol/mL][dL/mg]
+        function Cp   = wb2plasma(Cwb, hct, t)
+            if (hct > 1)
+                hct = hct/100;
             end
-            if (this.resampler_.ndims < 3)
-                t = table(cmrglc, ks(1), ks(2), ks(3), ks(4), ks(5), 'VariableNames', {'cmrglc' 'K1' 'k2' 'k3' 'k4' 'Dt'});
-                writetable(t, [this.resampler_.fqfileprefix '.txt']);
-            end
+            import mlkinetics.Huang1980.rbc_over_plasma;
+            Cp = Cwb./(1 + hct*(rbc_over_plasma(t) - 1));
         end
-		  
- 		function this = Huang1980(varargin)
- 			%% Huang1980
- 			%  Usage:  this = Huang1980()
+    end
 
+	methods		  
+        
+        %% GET
+        
+        function g = get.artery_interpolated(this)
+            rtimes = this.recon_times;
+            rng = this.aif.index0:this.aif.indexF;
+            if (this.aif.times(1) > 0)
+                Cwb = makima([0 this.aif.times(rng)], [0 this.aif.specificActivity(rng)], 0:rtimes(end));
+            else
+                Cwb = makima(   this.aif.times(rng),     this.aif.specificActivity(rng),  0:rtimes(end));
+            end
+            g = ensureRowVector(this.wb2plasma(Cwb, this.hct, 0:rtimes(end)));
+        end
+        function g = get.recon_times(this)
+            import mlkinetics.Huang1980.end_times_to_mid_times
+            rng = this.scanner.index0:this.scanner.indexF;
+            g   = this.scanner.times(rng);
+            g   = end_times_to_mid_times(g);
+        end
+        
+        %%
+        
+ 		function this = Huang1980(varargin)
+ 			%% HUANG1980
+ 			%  @param aif has scalar properties:  index0, indexF; vector properties:  times, specificActivity.
+ 			%  @param scanner ".
+ 			%  @param cbv.
+ 			%  @param glc is scalar.
+ 			%  @param hct is scalar.
+ 			%  @param LC  is scalar.
+ 			
  			ip = inputParser;
             ip.KeepUnmatched = true;
-            addParameter(ip, 'aif',       [], @(x) isa(x, 'mlpet.IAifData'));
-            addParameter(ip, 'scanner',   [], @(x) isa(x, 'mlpet.IScannerData'));
-            addParameter(ip, 'resampler', [], @(x) isa(x, 'mlfourd.AbstractResampler'));
-            addParameter(ip, 'cbv',       [], @(x) isa(x, 'mlfourd.INIfTI') || isempty(x));
-            addParameter(ip, 'glc',       [], @isscalar);
-            addParameter(ip, 'hct',       [], @isscalar);
-            addParameter(ip, 'LC', this.LC,   @isnumeric);
-            addParameter(ip, 'useSI', true,   @islogical);
-            addParameter(ip, 'logger', mlpipeline.Logger(tmpFileprefix), @(x) isa(x, 'mlpipeline.Logger'));
-            parse(ip, varargin{:});            
-            this.aif_       = ip.Results.aif;
-            this.scanner_   = ip.Results.scanner;
-            this.resampler_ = ip.Results.resampler;
-            this.cbv_       = ip.Results.cbv;
-            this.glc_       = ip.Results.glc;
-            this.hct_       = ip.Results.hct;
-            this.LC         = ip.Results.LC;
-            this.useSI_     = ip.Results.useSI;
-            this.logger_    = ip.Results.logger;
+            addParameter(ip, 'aif',     [])
+            addParameter(ip, 'scanner', [])
+            addParameter(ip, 'cbv',     [])
+            addParameter(ip, 'glc',     [], @isscalar)
+            addParameter(ip, 'hct',     [], @isscalar)
+            addParameter(ip, 'LC', this.LC, @isscalar)
+            parse(ip, varargin{:})
+            ipr = ip.Results;
             
-            rng_s     = this.scanner_.index0:this.scanner_.indexF;
-            t         = this.scanner_.times(rng_s);
-            d         = this.resampler_.dynamic;
-            this.dynamic_ = d.niftid;
-            m         = this.resampler_.mask;
-            this.mask_ = m.niftid;
-            rng_a     = this.aif_.index0:this.aif_.indexF;
-            if (this.aif_.times(1) > 0)
-                Cwb   = pchip([0 this.aif_.times(rng_a)], [0 this.aif_.specificActivity(rng_a)], t);
-            else
-                Cwb   = pchip(   this.aif_.times(rng_a),     this.aif_.specificActivity(rng_a), t);
-            end
-            this.Cp_  = ensureRowVector(this.wb2plasma(Cwb, this.hct_, t));
-            this.t_   = double(ensureRowVector(t));
-            this.ks0_ = [4 0.3 0.2 0.01]/60;
-            this.ks0_ = [this.ks0_ -4];
-            this.lb_  = []; %[0 0 0 0 -120];
-            this.ub_  = []; %[this.ks0_(1:4)*1024 0];
-            this.options_ = optimoptions('lsqcurvefit','Algorithm','levenberg-marquardt');
+            this.aif     = ipr.aif;
+            this.scanner = ipr.scanner;
+            this.cbv     = ipr.cbv;
+            this.glc     = ipr.glc;
+            this.hct     = ipr.hct;
+            this.LC      = ipr.LC;            
  		end
-    end 
-    
-    %% PRIVATE
-    
-	properties (Access = private)
- 		aif_
-        Cp_
-        dynamic_
-        mask_
-        options_
-        scanner_
-        resampler_
-        cbv_
-        glc_
-        hct_
-        ks0_
-        lb_
-        logger_
-        t_
-        ub_
-        useSI_
-    end
-    
-    methods (Access = private)
-        function [Ki,ks,synth] = buildCmrglcMap1(this) 
-            %  @return units of [Ki] == [K1 k3/(k2 + k3)] == mL/g/min
-            
-            [Ki,ks,synth] = this.buildCmrglcNonlinear1;
-        end
-        function [Ki,ks,synth] = buildCmrglcMap2(this) 
-            %  @return units of [Ki] == [K1 k3/(k2 + k3)] == mL/g/min
-            
-            sz     = this.mask_.size;
-            Ki     = zeros(sz(1),sz(2));
-            ks     = zeros(sz(1),sz(2), length(this.ks0_));
-            synth  = zeros(sz(1),sz(2),length(this.t_));
-            smpls  = 0;
-            yrng   = 1:sz(2);
-            xrng   = 1:sz(1);
-            for y = yrng
-                for x = xrng 
-                    if (this.mask_.img(x,y))
-                        smpls = smpls + 1;
-                        if (isempty(this.nSamples) || smpls <= this.nSamples)
-                            [Ki(x,y),ks(x,y,:),synth(x,y,:)] = this.buildCmrglcNonlinear2([x y]);
-                        end
-                    end
-                end
-            end
-        end
-        function [Ki,ks,synth] = buildCmrglcMap3(this) 
-            %  @return units of [Ki] == [K1 k3/(k2 + k3)] == mL/g/min
-            
-            sz     = this.mask_.size;
-            Ki     = zeros(sz(1),sz(2),sz(3));
-            ks     = zeros(sz(1),sz(2),sz(3), length(this.ks0_));
-            synth  = zeros(sz(1),sz(2),sz(3),length(this.t_));
-            smpls  = 0;
-            zrng   = 1:sz(3);
-            yrng   = 1:sz(2);
-            xrng   = 1:sz(1);
-            for z = zrng
-                for y = yrng
-                    for x = xrng 
-                        if (this.mask_.img(x,y,z))
-                            smpls = smpls + 1;
-                            if (isempty(this.nSamples) || smpls <= this.nSamples)                                
-                                [Ki(x,y,z),ks(x,y,z,:),synth(x,y,z,:)] = this.buildCmrglcNonlinear3([x y z]);
-                            end
-                        end
-                    end
-                end
-            end
-        end
-        function [Ki,ks,synth] = buildCmrglcNonlinear1(this, varargin)
-            %% BUILDCMRGLCNONLINEAR calls lsqcurvefit.
-            %  @return vox is numeric.
-            %  See also:  https://www.mathworks.com/help/releases/R2016b/stats/nonlinear-regression-workflow.html
-            
-            import mlkinetics.*;
-            rng_s = this.scanner_.index0:this.scanner_.indexF;
-            qT    = double(ensureRowVector(squeeze(this.dynamic_.img(rng_s)))); 
-            anon  = @(ks__,t__)Huang1980.qpet(ks__, this.Cp_, t__);
-            [ks,~,~,exitflag] = ...
-                    lsqcurvefit(anon, this.ks0_, this.t_, qT, this.lb_, this.ub_, this.options_);
-            disp(ks)
-            %disp(resnorm)
-            %disp(residual)
-            disp(exitflag)
-            synth = anon(ks, this.t_);
-            ks(1:4) = 60 * ks(1:4); % [ks] := [mL/g/min 1/min 1/min 1/min] == 60 [mL/g/s 1/s 1/s 1/s ]
-            Ki = ks(1)*ks(3)/(ks(2) + ks(3)); % [Ki] == [K1 k3/(k2 + k3)] == mL/g/min
-        end
-        function [Ki,ks,synth] = buildCmrglcNonlinear2(this, xvec)
-            %% BUILDCMRGLCNONLINEAR calls lsqcurvefit.
-            %  @return vox is numeric.
-            %  See also:  https://www.mathworks.com/help/releases/R2016b/stats/nonlinear-regression-workflow.html
-            
-            import mlkinetics.*;
-            rng_s = this.scanner_.index0:this.scanner_.indexF;
-            qT    = ensureRowVector(squeeze(this.dynamic_.img(xvec(1),xvec(2),rng_s))); 
-            anon  = @(ks__,t__)Huang1980.qpet(ks__, this.Cp_, t__);
-            [ks,~,~,exitflag] = ...
-                    lsqcurvefit(anon, this.ks0_, this.t_, qT, this.lb_, this.ub_, this.options_);
-            disp(ks)
-            %disp(resnorm)
-            %disp(residual)
-            disp(exitflag)
-            synth = anon(ks, this.t_);
-            ks(1:4) = 60 * ks(1:4); % [ks] := [mL/g/min 1/min 1/min 1/min] == 60 [mL/g/s 1/s 1/s 1/s ]
-            Ki = ks(1)*ks(3)/(ks(2) + ks(3)); % [Ki] == [K1 k3/(k2 + k3)] == mL/g/min
-        end
-        function [Ki,ks,synth] = buildCmrglcNonlinear3(this, xvec)
-            %% BUILDCMRGLCNONLINEAR calls lsqcurvefit.
-            %  @return vox is numeric.
-            %  See also:  https://www.mathworks.com/help/releases/R2016b/stats/nonlinear-regression-workflow.html
-            
-            import mlkinetics.*;
-            rng_s = this.scanner_.index0:this.scanner_.indexF;
-            qT    = ensureRowVector(squeeze(this.dynamic_.img(xvec(1),xvec(2),xvec(3),rng_s))); 
-            anon  = @(ks__,t__)Huang1980.qpet(ks__, this.Cp_, t__);
-            [ks,~,~,exitflag] = ...
-                    lsqcurvefit(anon, this.ks0_, this.t_, qT, this.lb_, this.ub_, this.options_);
-            disp(ks)
-            %disp(resnorm)
-            %disp(residual)
-            disp(exitflag)
-            synth = anon(ks, this.t_);
-            ks(1:4) = 60 * ks(1:4); % [ks] := [mL/g/min 1/min 1/min 1/min] == 60 [mL/g/s 1/s 1/s 1/s ]
-            Ki = ks(1)*ks(3)/(ks(2) + ks(3)); % [Ki] == [K1 k3/(k2 + k3)] == mL/g/min
-        end
     end
 
 	%  Created with Newcl by John J. Lee after newfcn by Frank Gonzalez-Morphy
