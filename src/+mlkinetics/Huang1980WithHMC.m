@@ -231,7 +231,7 @@ classdef Huang1980WithHMC < mlstatistics.HMC
             ylabel('activity / (kBq/mL)')
         end
         function g = rand_ks(this)
-            g = this.reluPars([0.2 * rand() 0.3 * rand() 0.1 * rand() 5e-4 * rand()], this.NumPredictors);
+            g = abs([0.2 * rand() 0.3 * rand() 0.1 * rand() 5e-4 * rand()]);
         end
 		  
  		function this = Huang1980WithHMC(varargin)
