@@ -14,7 +14,7 @@ classdef Huang1980WithHMC < mlstatistics.HMC
 	properties
  		artery_interpolated
         csv_filename = '/Users/jjlee/Tmp/DeepNetFCProject/PET/ses-E03056/FDG_DT20190523132832.000000-Converted-AC/makima_ksactivities.csv'
-        trueNoiseSigma = 1
+        true_sigma_noise = 0.01
         recon_end_times = [10., 23., 37., 53., 70., 89., 109., 131., 154., 179., 205., 233., 262., 293., 325., 359., 394., 431., 469., 509., 550., 593., 637., 683., 730., 779., 829., 881., 934., 990., 1047., 1106., 1166., 1228., 1291., 1356., 1422., 1490., 1559., 1630., 1702., 1776., 1852., 1930., 2009., 2090., 2172., 2256., 2341., 2428., 2516., 2607., 2699., 2793., 2888., 2985., 3083., 3183., 3284., 3388., 3493., 3601.]
         recon_times
         true_ks
@@ -256,11 +256,15 @@ classdef Huang1980WithHMC < mlstatistics.HMC
             this.true_ks = this.rand_ks();
             this.true_qs = this.huang1980_sampled(this.true_ks, this.artery_interpolated, this.recon_times);
             
+            this.true_qs = abs(this.true_qs .* (1 + this.true_sigma_noise*randn(size(this.true_qs))));
+            this.true_qs(this.true_qs < this.WELL_BACKGROUND) = this.WELL_BACKGROUND;
             % Choose the means and standard deviations of the Gaussian priors.
             ksPriorMean = [0.1 0.1 0.1 1e-4];
             ksPriorSigma = [0.2 0.2 0.2 2e-4];
             LogNoiseVarianceMean = 0;
             LogNoiseVarianceSigma = 0.001;
+            mean_log_var_noise = log(this.true_sigma_noise^2);
+            sigma_log_var_noise = 2;
             
             % Save a function |log_posterior| on the MATLAB(R) path that returns the
             % logarithm of the product of the prior and likelihood, and the gradient of
@@ -276,14 +280,14 @@ classdef Huang1980WithHMC < mlstatistics.HMC
             % |HamiltonianSampler| object. Display the sampler properties.
             starting_ks = this.rand_ks();
             LogNoiseVariance = 0.001 * randn;
-            startpoint = [starting_ks'; LogNoiseVariance];
+            startpoint = [this.rand_ks()'; log((this.true_sigma_noise * randn)^2)];
             this.smp = hmcSampler(logpdf, startpoint, varargin{:});            
             %this.smp.StepSize = 0.01; % speed up tuning
             %this.smp.NumSteps = 40;   % speed up tuning
             fprintf('Huang1980WithHMC().smp:\n'); disp(this.smp)
             
             [this.MAPPars,this.fitinfo] = this.estimateMAP();
-            this.jitterScale = [0.2; 0.2; 0.2; 2e-4; LogNoiseVarianceSigma];
+            this.jitter_scale = [sigma_ks'; sigma_log_var_noise];
             this = this.drawTunedSamples('NumChains', 4, 'Burnin', 500, 'NumSamples', 1000);
             this = this.diagnostics;
             fprintf('\n')
