@@ -259,8 +259,8 @@ classdef Huang1980WithHMC < mlstatistics.HMC
             this.true_qs(this.true_qs < this.WELL_BACKGROUND) = this.WELL_BACKGROUND;
 
             % Choose the means and standard deviations of the Gaussian priors.
-            ksPriorMean = [0.1 0.1 0.1 1e-4];
-            ksPriorSigma = [0.2 0.2 0.2 2e-4];
+            mean_ks = [0.1 0.1 0.1 1e-4];
+            sigma_ks = mean_ks;
             mean_log_var_noise = log(this.true_sigma_noise^2);
             sigma_log_var_noise = 2;
             
@@ -276,11 +276,10 @@ classdef Huang1980WithHMC < mlstatistics.HMC
             % Define the initial point to start sampling from, and then call the
             % |hmcSampler| function to create the Hamiltonian sampler as a
             % |HamiltonianSampler| object. Display the sampler properties.
-            starting_ks = this.rand_ks();
             startpoint = [this.rand_ks()'; log((this.true_sigma_noise * randn)^2)];
             this.smp = hmcSampler(logpdf, startpoint, varargin{:});            
             %this.smp.StepSize = 0.01; % speed up tuning
-            %this.smp.NumSteps = 40;   % speed up tuning
+            this.smp.NumSteps = 20;   % speed up tuning
             fprintf('Huang1980WithHMC().smp:\n'); disp(this.smp)
             
             [this.MAPPars,this.fitinfo] = this.estimateMAP();
