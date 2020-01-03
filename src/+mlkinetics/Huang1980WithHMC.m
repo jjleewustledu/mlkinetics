@@ -23,8 +23,8 @@ classdef Huang1980WithHMC < mlstatistics.HMC
     
     methods (Static)        
         function qs = huang1980_solution(ks, artery_interpolated)
-            %import mlkinetics.Huang1980WithHMC.reluPars
-            %ks = reluPars(ks, 4);
+            %import mlkinetics.Huang1980WithHMC.relu_pars
+            %ks = relu_pars(ks, 4);
             k1 = ks(1);
             k2 = ks(2);
             k3 = ks(3);
@@ -54,8 +54,8 @@ classdef Huang1980WithHMC < mlstatistics.HMC
             qs = qs(ceil(recon_times));
         end
         function [dqs,qs] = grad_huang1980_solution(ks, artery_interpolated)
-            %import mlkinetics.Huang1980WithHMC.reluPars
-            %ks = reluPars(ks, 4);
+            %import mlkinetics.Huang1980WithHMC.relu_pars
+            %ks = relu_pars(ks, 4);
             k1 = ks(1);
             k2 = ks(2);
             k3 = ks(3);
@@ -206,11 +206,12 @@ classdef Huang1980WithHMC < mlstatistics.HMC
             assert(all(MAPPars(1:end-1) > 0), ...
                 'Huang1980WithHMC.drawTunedSamples.MAPPars->%s', mat2str(MAPPars))
             fprintf('estimateMAP().MAPPars:  %s\n\n', mat2str(MAPPars))
-            this.plotMAPIterations(finfo)
+            this.plot_MAP_iterations(finfo)
         end
-        function mp = jitterMAPPars(this)
-            mp = this.MAPPars + this.jitterScale .* randn(size(this.MAPPars));
-            mp(1:end-1) = abs(mp(1:end-1));
+        function mp = jitter_MAPPars(this)
+            mp = this.MAPPars + this.jitter_scale .* randn(size(this.MAPPars));
+            mp(1:end-1) = abs(mp(1:end-1)); % reflecting boundary conditions on jittered MAPPars
+        end
         function this = build_recon_times(this)
             this.recon_times = this.recon_end_times;
             return
@@ -222,11 +223,11 @@ classdef Huang1980WithHMC < mlstatistics.HMC
                     (this.recon_end_times(it) - this.recon_end_times(it-1))/2;
             end
         end
-        function plotModelResults(this)
+        function plot_model_results(this)
             qs = this.huang1980_sampled(this.results.Mean(1:4), this.artery_interpolated, this.recon_times);
             figure
             plot(this.recon_times, qs, ':o', this.recon_times, this.true_qs)
-            title('mlkinetics.Huang1980WithHMC.plot_model_results()')
+            title('mlkinetics.Huang1980WithHMC.plot\_model\_results()')
             xlabel('time / s')
             ylabel('activity / (kBq/mL)')
         end
@@ -240,7 +241,7 @@ classdef Huang1980WithHMC < mlstatistics.HMC
             
  			this = this@mlstatistics.HMC();
             
-            import mlkinetics.Huang1980WithHMC.logPosterior
+            import mlkinetics.Huang1980WithHMC.log_posterior
             
             tic
             this.artery_interpolated = readmatrix(this.csv_filename);
@@ -259,7 +260,7 @@ classdef Huang1980WithHMC < mlstatistics.HMC
             LogNoiseVarianceMean = 0;
             LogNoiseVarianceSigma = 0.001;
             
-            % Save a function |logPosterior| on the MATLAB(R) path that returns the
+            % Save a function |log_posterior| on the MATLAB(R) path that returns the
             % logarithm of the product of the prior and likelihood, and the gradient of
             % this logarithm.  Then, call the function with arguments to define the |logpdf|
             % input argument to the |hmcSampler| function.
@@ -285,9 +286,9 @@ classdef Huang1980WithHMC < mlstatistics.HMC
             this = this.diagnostics;
             fprintf('\n')
             fprintf('Huang1980WithHMC().results:\n\n'); disp(this.results)
-            fprintf('true [ks(:) log(noiseSigma^2)]:  %s\n', ...
-                mat2str([this.true_ks log(this.trueNoiseSigma^2)]))
-            this.plotModelResults()
+            fprintf('true [ks(:) log(noise_sigma^2)]:  %s\n', ...
+                mat2str([this.true_ks log(this.true_sigma_noise^2)]))
+            this.plot_model_results()
             
             fprintf('Huang1980WithHMC().this:\n'); disp(this)
             toc
