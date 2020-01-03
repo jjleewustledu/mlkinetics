@@ -160,25 +160,25 @@ classdef Huang1980WithHMC < mlstatistics.HMC
             qs  =  qs(:, ceil(recon_times)); % kBq/mL
         end
         
-        function [logpdf, gradlogpdf] = logPosterior( ...
-                Parameters, tst, qst, arteryt_interpolated, ...
-                kstPriorMean, kstPriorSigma, ...
-                LogNoiseVarianceMean, LogNoiseVarianceSigma)
-            %% The |logPosterior| function returns the logarithm of the product of a
+        function [logpost, grad_logpost] = log_posterior( ...
+                Parameters, ts, qs, artery_interpolated, ...
+                mean_ks, sigma_ks, ...
+                mean_log_var_noise, sigma_log_var_noise)
+            %% The |log_posterior| function returns the logarithm of the product of a
             %  normal likelihood and a normal prior for the model. The input
             %  argument |Parameter| has the format |[Beta;LogNoiseVariance]|.
             %  |tst| and |qst| contain the values of the predictors and response,
             %  respectively.
             
             import mlkinetics.Huang1980WithHMC.grad_huang1980_sampled
-            import mlkinetics.Huang1980WithHMC.normalPrior
+            import mlstatistics.HMC.normal_prior
             
             % Unpack the parameter vector
-            kst              = Parameters(1:end-1); % 4 x 1
-            LogNoiseVariance = Parameters(end);
+            ks            = Parameters(1:end-1)'; % 4 x 1
+            log_var_noise = Parameters(end);
             
             % Unpack huang1980 results
-            [dqs_,qs_] = grad_huang1980_sampled(kst', arteryt_interpolated', tst');
+            [dqs_,qs_] = grad_huang1980_sampled(ks, artery_interpolated, ts);
             
             % Compute the log likelihood and its gradient
             Sigma                   = sqrt(exp(LogNoiseVariance));
@@ -188,15 +188,17 @@ classdef Huang1980WithHMC < mlstatistics.HMC
             gradLogNoiseVariance1	= sum(-.5 + .5*(Z.^2)); % scalar
             
             % Compute log priors and gradients
-            [LPkst, gradKst2]                      = normalPrior(kst, kstPriorMean, kstPriorSigma);
-            [LPLogNoiseVar, gradLogNoiseVariance2] = normalPrior(LogNoiseVariance, LogNoiseVarianceMean, LogNoiseVarianceSigma);
-            logprior                               = LPkst + LPLogNoiseVar;
+            [logprior_kst, grad_logprior_kst] = ...
+                normal_prior(ks', mean_ks', sigma_ks');
+            [logprior_log_var_noise, grad_logprior_log_var_noise] = ...
+                normal_prior(log_var_noise, mean_log_var_noise, sigma_log_var_noise);
+            logprior = logprior_kst + logprior_log_var_noise;
             
             % Return the log posterior and its gradient
-            logpdf               = loglik + logprior;
-            gradKst              = gradKst1 + gradKst2;
-            gradLogNoiseVariance = gradLogNoiseVariance1 + gradLogNoiseVariance2;
-            gradlogpdf           = [gradKst;gradLogNoiseVariance];
+            logpost                    = loglik + logprior; % scalar
+            grad_logpost_kst           = grad_loglik_kst + grad_logprior_kst;
+            grad_logpost_log_var_noise = grad_loglik_log_var_noise + grad_logprior_log_var_noise;
+            grad_logpost               = [grad_logpost_kst; grad_logpost_log_var_noise]; % 5 x 1
         end
     end
 
