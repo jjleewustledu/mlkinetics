@@ -255,14 +255,12 @@ classdef Huang1980WithHMC < mlstatistics.HMC
             rng('default') %For reproducibility
             this.true_ks = this.rand_ks();
             this.true_qs = this.huang1980_sampled(this.true_ks, this.artery_interpolated, this.recon_times);
-            
             this.true_qs = abs(this.true_qs .* (1 + this.true_sigma_noise*randn(size(this.true_qs))));
             this.true_qs(this.true_qs < this.WELL_BACKGROUND) = this.WELL_BACKGROUND;
+
             % Choose the means and standard deviations of the Gaussian priors.
             ksPriorMean = [0.1 0.1 0.1 1e-4];
             ksPriorSigma = [0.2 0.2 0.2 2e-4];
-            LogNoiseVarianceMean = 0;
-            LogNoiseVarianceSigma = 0.001;
             mean_log_var_noise = log(this.true_sigma_noise^2);
             sigma_log_var_noise = 2;
             
@@ -279,7 +277,6 @@ classdef Huang1980WithHMC < mlstatistics.HMC
             % |hmcSampler| function to create the Hamiltonian sampler as a
             % |HamiltonianSampler| object. Display the sampler properties.
             starting_ks = this.rand_ks();
-            LogNoiseVariance = 0.001 * randn;
             startpoint = [this.rand_ks()'; log((this.true_sigma_noise * randn)^2)];
             this.smp = hmcSampler(logpdf, startpoint, varargin{:});            
             %this.smp.StepSize = 0.01; % speed up tuning
