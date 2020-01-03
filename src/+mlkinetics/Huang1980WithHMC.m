@@ -181,11 +181,11 @@ classdef Huang1980WithHMC < mlstatistics.HMC
             [dqs_,qs_] = grad_huang1980_sampled(ks, artery_interpolated, ts);
             
             % Compute the log likelihood and its gradient
-            Sigma                   = sqrt(exp(LogNoiseVariance));
-            Z                       = (qst - qs_')/Sigma; % 62 x 1
-            loglik                  = sum(-log(Sigma) - .5*log(2*pi) - .5*Z.^2); % scalar
-            gradKst1                = dqs_*Z/Sigma; % 4 x 1
-            gradLogNoiseVariance1	= sum(-.5 + .5*(Z.^2)); % scalar
+            Sigma                     = sqrt(exp(log_var_noise)); % scalar
+            Z                         = (1 - qs_'./qs')./Sigma; % 62 x 1
+            loglik                    = sum(-log(qs'.*Sigma) - 0.5*log(2*pi) - 0.5*Z.^2); % scalar
+            grad_loglik_kst           = dqs_*Z./Sigma; % 4 x 1
+            grad_loglik_log_var_noise = sum(-.5 + .5*(Z.^2)); % scalar
             
             % Compute log priors and gradients
             [logprior_kst, grad_logprior_kst] = ...
