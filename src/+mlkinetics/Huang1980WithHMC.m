@@ -14,7 +14,7 @@ classdef Huang1980WithHMC < mlstatistics.HMC
 	properties
  		artery_interpolated
         csv_filename = '/Users/jjlee/Tmp/DeepNetFCProject/PET/ses-E03056/FDG_DT20190523132832.000000-Converted-AC/makima_ksactivities.csv'
-        true_sigma_noise = 0.01
+        true_sigma_noise = 0.1
         recon_end_times = [10., 23., 37., 53., 70., 89., 109., 131., 154., 179., 205., 233., 262., 293., 325., 359., 394., 431., 469., 509., 550., 593., 637., 683., 730., 779., 829., 881., 934., 990., 1047., 1106., 1166., 1228., 1291., 1356., 1422., 1490., 1559., 1630., 1702., 1776., 1852., 1930., 2009., 2090., 2172., 2256., 2341., 2428., 2516., 2607., 2699., 2793., 2888., 2985., 3083., 3183., 3284., 3388., 3493., 3601.]
         recon_times
         true_ks
@@ -182,8 +182,10 @@ classdef Huang1980WithHMC < mlstatistics.HMC
             
             % Compute the log likelihood and its gradient
             Sigma                     = sqrt(exp(log_var_noise)); % scalar
-            Z                         = (1 - qs_'./qs')./Sigma; % 62 x 1
-            loglik                    = sum(-log(qs'.*Sigma) - 0.5*log(2*pi) - 0.5*Z.^2); % scalar
+            %Z                         = (1 - qs_'./qs')./Sigma; % 62 x 1
+            %loglik                    = sum(-log(qs'.*Sigma) - 0.5*log(2*pi) - 0.5*Z.^2); % scalar
+            Z                         = (qs' - qs_')./Sigma; % 62 x 1
+            loglik                    = sum(-log(Sigma) - 0.5*log(2*pi) - 0.5*Z.^2); % scalar
             grad_loglik_kst           = dqs_*Z./Sigma; % 4 x 1
             grad_loglik_log_var_noise = sum(-.5 + .5*(Z.^2)); % scalar
             
@@ -255,14 +257,14 @@ classdef Huang1980WithHMC < mlstatistics.HMC
             rng('default') %For reproducibility
             this.true_ks = this.rand_ks();
             this.true_qs = this.huang1980_sampled(this.true_ks, this.artery_interpolated, this.recon_times);
-            this.true_qs = abs(this.true_qs .* (1 + this.true_sigma_noise*randn(size(this.true_qs))));
+            this.true_qs = abs(this.true_qs .* (1 + this.true_sigma_noise^2 * randn(size(this.true_qs))));
             this.true_qs(this.true_qs < this.WELL_BACKGROUND) = this.WELL_BACKGROUND;
 
             % Choose the means and standard deviations of the Gaussian priors.
-            mean_ks = [0.1 0.1 0.1 1e-4];
-            sigma_ks = mean_ks;
+            mean_ks = this.true_ks;
+            sigma_ks = 10 * mean_ks;
             mean_log_var_noise = log(this.true_sigma_noise^2);
-            sigma_log_var_noise = 2;
+            sigma_log_var_noise = abs(mean_log_var_noise)/2;
             
             % Save a function |log_posterior| on the MATLAB(R) path that returns the
             % logarithm of the product of the prior and likelihood, and the gradient of
@@ -279,7 +281,7 @@ classdef Huang1980WithHMC < mlstatistics.HMC
             startpoint = [this.rand_ks()'; log((this.true_sigma_noise * randn)^2)];
             this.smp = hmcSampler(logpdf, startpoint, varargin{:});            
             %this.smp.StepSize = 0.01; % speed up tuning
-            this.smp.NumSteps = 20;   % speed up tuning
+            %this.smp.NumSteps = 20;   % speed up tuning
             fprintf('Huang1980WithHMC().smp:\n'); disp(this.smp)
             
             [this.MAPPars,this.fitinfo] = this.estimateMAP();

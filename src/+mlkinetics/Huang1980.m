@@ -16,7 +16,8 @@ classdef Huang1980
     end
     
     properties (Dependent)
-        artery_interpolated
+        artery_interpolated        
+        recon_activities
         recon_times
     end
     
@@ -151,7 +152,13 @@ classdef Huang1980
             [dqs,qs] = grad_huang1980_solution(ks, v1, artery_interpolated);
             dqs = dqs(:, ceil(recon_times)); % kBq*s/mL
             qs  =  qs(:, ceil(recon_times)); % kBq/mL
-        end     
+        end        
+        
+        function loss = huang1980_simulanneal_objective(ks, v1, artery_interpolated, recon_times, qs0, sigma0)
+            import mlkinetics.Huang1980.huang1980_sampled          
+            qs = huang1980_sampled(ks, v1, artery_interpolated, recon_times);
+            loss = 0.5 * sum((1 - qs ./ qs0).^2) / sigma0^2 + sum(log(qs0)); % sigma ~ sigma0 * qs0
+        end
         
         function logp = log_likelihood(Z, Sigma)
             logp = sum(-log(Sigma) - 0.5*log(2*pi) - 0.5*Z.^2); % scalar
@@ -200,6 +207,10 @@ classdef Huang1980
             end
             g = ensureRowVector(this.wb2plasma(Cwb, this.hct, 0:rtimes(end)));
         end
+        function g = get.recon_activities(this)
+            rng = this.scanner.index0:this.scanner.indexF;
+            g = this.scanner.specificActivity(rng);
+        end
         function g = get.recon_times(this)
             import mlkinetics.Huang1980.end_times_to_mid_times
             rng = this.scanner.index0:this.scanner.indexF;
@@ -222,9 +233,9 @@ classdef Huang1980
             ip.KeepUnmatched = true;
             addParameter(ip, 'aif',     [])
             addParameter(ip, 'scanner', [])
-            addParameter(ip, 'cbv',     [])
-            addParameter(ip, 'glc',     [], @isscalar)
-            addParameter(ip, 'hct',     [], @isscalar)
+            addParameter(ip, 'cbv',     0.04)
+            addParameter(ip, 'glc',     103, @isscalar)
+            addParameter(ip, 'hct',     0.398, @isscalar)
             addParameter(ip, 'LC', this.LC, @isscalar)
             parse(ip, varargin{:})
             ipr = ip.Results;
