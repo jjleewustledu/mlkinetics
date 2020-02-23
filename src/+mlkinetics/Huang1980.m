@@ -157,7 +157,7 @@ classdef Huang1980
         function loss = huang1980_simulanneal_objective(ks, v1, artery_interpolated, recon_times, qs0, sigma0)
             import mlkinetics.Huang1980.huang1980_sampled          
             qs = huang1980_sampled(ks, v1, artery_interpolated, recon_times);
-            loss = 0.5 * sum((1 - qs ./ qs0).^2) / sigma0^2 + sum(log(qs0)); % sigma ~ sigma0 * qs0
+            loss = 0.5 * sum((1 - qs ./ qs0).^2) / sigma0^2 + sum(log(sigma0*qs0)); % sigma ~ sigma0 * qs0
         end
         
         function logp = log_likelihood(Z, Sigma)
