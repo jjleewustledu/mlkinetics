@@ -54,7 +54,7 @@ classdef Huang1980SimulAnneal
         
         %%
         
-        function disp(this)            
+        function disp(this)
             fprintf('\n')
             fprintf(class(this))
             disp(this.aif)
@@ -71,7 +71,7 @@ classdef Huang1980SimulAnneal
             disp(this.results_.output.temperature)
         end
         
-        function plot(this)            
+        function plot(this)
             figure
             plot(this.recon_times, qs0, '-+', ...
                  this.recon_times, this.huang_.huang1980_sampled(ks, ai, rt), ':o')
@@ -80,7 +80,7 @@ classdef Huang1980SimulAnneal
             ylabel('activity / (Bq/mL)')
         end
         
-        function results = simulanneal(this)            
+        function results = simulanneal(this)
             ai = this.artery_interpolated;
             rt = this.recon_times;
             qs0 = this.recon_activities;
