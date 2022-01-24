@@ -131,7 +131,6 @@ classdef F18DeoxyGlucoseLaif < mlkinetics.AbstractKinetics
                 end
             end
             
-            studyDat.saveWorkspace;
             studyDat.diaryOff;
             toct0 = toc(t0);
         end
