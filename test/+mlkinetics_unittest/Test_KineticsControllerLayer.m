@@ -38,7 +38,7 @@ classdef Test_KineticsControllerLayer < matlab.unittest.TestCase
             this.fatalAssertEqual(study.subjectsDir, this.subjectsDir);
             iter = study.createIteratorForSessionData;
             sess = iter.next;
-            this.fatalAssertInstanceOf(sess, 'mlpipeline.SessionData');
+            this.fatalAssertInstanceOf(sess, 'mlpipeline.SessionData2022');
         end
         function test_setSessionData(this)
             sess = this.sessionData;
@@ -101,7 +101,7 @@ classdef Test_KineticsControllerLayer < matlab.unittest.TestCase
 		function setupKineticsControllerLayer(this)
  			import mlkinetics.*;
  			this.testObj_ = KineticsControllerLayer;
-            this.sessionData = mlpipeline.SessionData( ...
+            this.sessionData = mlpipeline.SessionData2022( ...
                 'studyData', mlpipeline.StudyDataSingletons.instance('test_raichle'), ...
                 'sessionPath', fullfile(this.subjectsDir, 'NP995_14'), ...
                 'snumber', 1);
