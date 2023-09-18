@@ -53,7 +53,7 @@ classdef Huang1980Nonlinear
                  Huang1980Nonlinear.q3(Cp, K1, a, b, k3, t) + Huang1980Nonlinear.V*Cp; 
             qT = double(qT);
         end     
-        function conc    = slide(conc, t, Dt)
+        function conc   = slide(conc, t, Dt)
             %% SLIDE slides discretized function conc(t) to conc(t - Dt);
             %  Dt > 0 will slide conc(t) towards later times t.
             %  Dt < 0 will slide conc(t) towards earlier times t.
@@ -75,22 +75,8 @@ classdef Huang1980Nonlinear
                 conc = conc';
             end
         end   
-        function Cp  = wb2plasma(Cwb, hct, t)
-            if (hct > 1)
-                hct = hct/100;
-            end
-            import mlkinetics.Huang1980Nonlinear.*;
-            Cp = Cwb./(1 + hct*(rbcOverPlasma(t) - 1));
-        end
-        function rop = rbcOverPlasma(t)
-            %% RBCOVERPLASMA is [FDG(RBC)]/[FDG(plasma)]
-            
-            t   = t/60;      % sec -> min
-            a0  = 0.814104;  % FINAL STATS param  a0 mean  0.814192	 std 0.004405
-            a1  = 0.000680;  % FINAL STATS param  a1 mean  0.001042	 std 0.000636
-            a2  = 0.103307;  % FINAL STATS param  a2 mean  0.157897	 std 0.110695
-            tau = 50.052431; % FINAL STATS param tau mean  116.239401	 std 51.979195
-            rop = a0 + a1*t + a2*(1 - exp(-t/tau));
+        function Cp     = wb2plasma(varargin)
+            Cp = mlraichle.RBCPartition.wb2plasma(varargin{:});
         end
     end
     

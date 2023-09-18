@@ -1,20 +1,12 @@
-classdef AbstractKineticsModel < mlbayesian.NullModel & mlkinetics.IKineticsModel
-	%% ABSTRACTKINETICSMODEL  
+classdef KineticsModel_20190307 < mlbayesian.NullModel & mlkinetics.IKineticsModel
+	%% KINETICSMODEL  
 
 	%  $Revision$
  	%  was created 12-Dec-2017 22:41:30 by jjlee,
  	%  last modified $LastChangedDate$ and placed into repository /Users/jjlee/Local/src/mlcvl/mlkinetics/src/+mlkinetics.
  	%% It was developed on Matlab 9.3.0.713579 (R2017b) for MACI64.  Copyright 2017 John Joowon Lee. 	
-    
+
     properties (Dependent)
-        aifSpecificActivity
-        aifSpecificActivityInterp
-        aifTimes
-        aifTimesInterp
-        scannerSpecificActivity
-        scannerSpecificActivityInterp
-        scannerTimes
-        scannerTimesInterp
         sessionData
     end
     
@@ -22,35 +14,40 @@ classdef AbstractKineticsModel < mlbayesian.NullModel & mlkinetics.IKineticsMode
         
         %% GET
         
-        function g = get.aifSpecificActivity(this)
-            g = this.aifBuilder_.specificActivity;
-        end
-        function g = get.aifSpecificActivityInterp(this)
-            g = this.aifBuilder_.specificActivityInterpolants;
-        end
-        function g = get.aifTimes(this)
-            g = this.aifBuilder_.times;
-        end
-        function g = get.aifTimesInterp(this)
-            g = this.aifBuilder_.timeInterpolants;
-        end
-        function g = get.scannerSpecificActivity(this)
-            g = this.scannerBuilder_.specificActivity;
-        end
-        function g = get.scannerSpecificActivityInterp(this)
-            g = this.scannerBuilder_.specificActivityInterpolants;
-        end
-        function g = get.scannerTimes(this)
-            g = this.scannerBuilder_.times;
-        end
-        function g = get.scannerTimesInterp(this)
-            g = this.scannerBuilder_.timeInterpolants;
-        end
         function g = get.sessionData(this)
             g = this.scannerBuider_.sessionData;
         end
-
+        
         %%
+        
+        function g = aifSpecificActivity(this)
+            g = this.aifBuilder_.specificActivity * ...
+                this.calibrationBuilder_.aif2model;
+        end
+        function g = aifSpecificActivityInterp(this)
+            g = this.aifBuilder_.specificActivityInterpolants * ...
+                this.calibrationBuilder_.aif2model;
+        end
+        function g = aifTimes(this)
+            g = this.aifBuilder_.times;
+        end
+        function g = aifTimesInterp(this)
+            g = this.aifBuilder_.timeInterpolants;
+        end
+        function g = scannerSpecificActivity(this)
+            g = this.scannerBuilder_.specificActivity * ...
+                this.calibrationBuilder_.scanner2model;
+        end
+        function g = scannerSpecificActivityInterp(this)
+            g = this.scannerBuilder_.specificActivityInterpolants * ...
+                this.calibrationBuilder_.scanner2model;
+        end
+        function g = scannerTimes(this)
+            g = this.scannerBuilder_.times;
+        end
+        function g = scannerTimesInterp(this)
+            g = this.scannerBuilder_.timeInterpolants;
+        end
         
         function plot(this, varargin)
             figure;
@@ -61,31 +58,27 @@ classdef AbstractKineticsModel < mlbayesian.NullModel & mlkinetics.IKineticsMode
             title(class(this));
         end
 		  
- 		function this = AbstractKineticsModel(varargin)
- 			%% ABSTRACTKINETICSMODEL
+ 		function this = KineticsModel_20190307(varargin)
+ 			%% KINETICSMODEL
  			%  @param named scannerBuilder is an mlpet.IScannerBuilder
  			%  @param named aifBuilder     is an mlpet.IAifBuilder
- 			%  @param named blindedData    is an mlraichle.BlindedData
             %  @param named useSynthetic   is logical            
             %  @param named sessionData    is an mlraichle.SessionData
             %  @param named datedFilename  is logical
  			
-            this = this@mlbayesian.NullModel(varargin{:});
             ip = inputParser;
             ip.KeepUnmatched = true;
             addParameter(ip, 'scannerBuilder',     @(x) isa(x, 'mlpet.IScannerBuilder'));
             addParameter(ip, 'aifBuilder',         @(x) isa(x, 'mlpet.IAifBuilder'));
-            addParameter(ip, 'blindedData',        @(x) isa(x, 'mlpet.IBlindedData'));
-            addParameter(ip, 'calibrationBuilder', @(x) isa(x, 'mlpet.ICalibrationBuilder'));
-            parse(ip, varargin{:});            
+            addParameter(ip, 'calibrationBuilder', mlpet.NullCalibrationBuilder(), @(x) isa(x, 'mlpet.ICalibrationBuilder'));
+            parse(ip, varargin{:});     
+            this = this@mlbayesian.NullModel( ...
+                'independentData', ip.Results.scannerBuilder.scannerTimes, ...
+                'dependentData',   ip.Results.scannerBuilder.scannerSpecificActivity, ...
+                varargin{:});       
             this.scannerBuilder_     = ip.Results.scannerBuilder;
             this.aifBuilder_         = ip.Results.aifBuilder;
-            this.blindedData_        = ip.Results.blindedData;
             this.calibrationBuilder_ = ip.Results.calibrationBuilder;
-            
-            this = this.setupKernel;           
-            this = this.setupFilesystem;
-            this = this.checkModel;
  		end
     end 
     
@@ -94,8 +87,6 @@ classdef AbstractKineticsModel < mlbayesian.NullModel & mlkinetics.IKineticsMode
     properties (Access = protected)
         scannerBuilder_
         aifBuilder_
-        blindedData_
-        calibrationBuilder_
     end
     
     methods (Access = protected)
@@ -140,11 +131,17 @@ classdef AbstractKineticsModel < mlbayesian.NullModel & mlkinetics.IKineticsMode
                 'max_',       ps + this.M*sps, ... 
                 'std_',       sps, ...
                 'nAnneal',    40, ...
-                'nBeta',      100, ...
+                'nBeta',      50, ...
                 'nPop',       50, ...
                 'nProposals', 100, ...
                 'nSamples',   numel(this.independentData));
         end
+    end
+    
+    %% PRIVATE
+    
+    properties (Access = private)        
+        calibrationBuilder_
     end
 
 	%  Created with Newcl by John J. Lee after newfcn by Frank Gonzalez-Morphy

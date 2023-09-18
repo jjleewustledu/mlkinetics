@@ -16,7 +16,7 @@ classdef KineticsFacade
 
  			ip = inputParser;
             addParameter(ip, 'studyData',     [], @(x) isa(x, 'mlpipeline.StudyDataSingleton'));
-            addParameter(ip, 'kineticsModel', [], @(x) isa(x, 'mlkinetics.IKineticsModel'));
+            addParameter(ip, 'kineticsModel', []);
             addParameter(ip, 'mcmcStrategy',  [], @(x) isa(x, 'mlbayesian.IMcmcStrategy'));
             parse(ip, varargin{:});
         end

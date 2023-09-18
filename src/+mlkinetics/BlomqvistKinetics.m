@@ -84,22 +84,8 @@ classdef BlomqvistKinetics
             tau = t(2:end) - t(1:end-1);
             tau = [tau tau(end)];
         end
-        function Cp  = wb2plasma(Cwb, hct, t)
-            if (hct > 1)
-                hct = hct/100;
-            end
-            import mlkinetics.BlomqvistKinetics.*;
-            Cp = Cwb./(1 + hct*(rbcOverPlasma(t) - 1));
-        end
-        function rop = rbcOverPlasma(t)
-            %% RBCOVERPLASMA is [FDG(RBC)]/[FDG(plasma)]
-            
-            t   = t/60;      % sec -> min
-            a0  = 0.814104;  % FINAL STATS param  a0 mean  0.814192	 std 0.004405
-            a1  = 0.000680;  % FINAL STATS param  a1 mean  0.001042	 std 0.000636
-            a2  = 0.103307;  % FINAL STATS param  a2 mean  0.157897	 std 0.110695
-            tau = 50.052431; % FINAL STATS param tau mean  116.239401	 std 51.979195
-            rop = a0 + a1*t + a2*(1 - exp(-t/tau));
+        function Cp  = wb2plasma(varargin)
+            Cp = mlraichle.RBCPartition.wb2plasma(varargin{:});
         end
     end
     

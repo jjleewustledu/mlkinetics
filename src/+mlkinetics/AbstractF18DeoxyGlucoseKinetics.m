@@ -46,19 +46,11 @@ classdef AbstractF18DeoxyGlucoseKinetics < mlkinetics.AbstractGlucoseKinetics
         function mdl    = model(varargin)
             mdl = qFDG(varargin{:});
         end
-        function Cp     = wb2plasma(Cwb, hct, t)
-            if (hct > 1)
-                hct = hct/100;
-            end
-            lambda = mlkinetics.AbstractF18DeoxyGlucoseKinetics.rbcOverPlasma(t);
-            Cp = Cwb./(1 + hct*(lambda - 1));
+        function Cp     = wb2plasma(varargin)
+            Cp = mlraichle.RBCPartition.wb2plasma(varargin{:});
         end
-        function Cwb    = plasma2wb(Cp, hct, t)
-            if (hct > 1)
-                hct = hct/100;
-            end
-            lambda = mlkinetics.AbstractF18DeoxyGlucoseKinetics.rbcOverPlasma(t);
-            Cwb = Cp.*(1 + hct*(lambda - 1));
+        function Cwb    = plasma2wb(varargin)
+            Cwb = mlraichle.RBCPartition.plasma2wb(varargin{:});
         end
     end
     
@@ -371,21 +363,6 @@ classdef AbstractF18DeoxyGlucoseKinetics < mlkinetics.AbstractGlucoseKinetics
             catch ME %#ok<NASGU>
                 rsn = '';
             end
-        end
-    end
-    
-    %% PRIVATE
-    
-    methods (Static, Access = 'private')
-        function rop = rbcOverPlasma(t)
-            %% RBCOVERPLASMA is [FDG(RBC)]/[FDG(plasma)]
-            
-            t   = t/60;      % sec -> min
-            a0  = 0.814104;  % FINAL STATS param  a0 mean  0.814192	 std 0.004405
-            a1  = 0.000680;  % FINAL STATS param  a1 mean  0.001042	 std 0.000636
-            a2  = 0.103307;  % FINAL STATS param  a2 mean  0.157897	 std 0.110695
-            tau = 50.052431; % FINAL STATS param tau mean  116.239401	 std 51.979195
-            rop = a0 + a1*t + a2*(1 - exp(-t/tau));
         end
     end
     
