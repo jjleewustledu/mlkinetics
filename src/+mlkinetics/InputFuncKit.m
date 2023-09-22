@@ -20,17 +20,18 @@ classdef (Abstract) InputFuncKit < handle & mlsystem.IHandle
             h = figure;
             img = asrow(this.input_func_ic_.imagingFormat.img);
             try
-                timesMid = asrow(this.input_func_ic_.json_metadata.timeMid);
+                timesMid = asrow(this.input_func_ic_.json_metadata.timesMid);
                 xl = "times (s)";
             catch ME
                 handwarning(ME)
                 timesMid = 1:length(img);
                 xl = "time frame";
             end
-            plot(timesMid, img, ":o", FontSize=18)
+            plot(timesMid, img, ":o")
             xlabel(xl);
             ylabel("activity density (Bq/mL)");
-            title(sprintf("%s: %s", stackstr(3), this.input_func_ic_.fileprefix));
+            title(sprintf("%s: \n%s", stackstr(3), this.input_func_ic_.fileprefix), interprete="none");
+            fontsize(gcf, scale=1.2)
             saveFigure2(h, this.input_func_ic_.fqfp, closeFigure=false)
         end
     end
