@@ -11,7 +11,7 @@ classdef QuadraticMintun1984Model < handle & mlkinetics.QuadraticModel
     end
 
     properties 
-        recovery_coeff = 0.49 % for cbf, from Fung & Carson 2013
+        recovery_coeff = 1 % for cbf, from Fung & Carson 2013
     end
 
     properties (Dependent)
@@ -70,7 +70,7 @@ classdef QuadraticMintun1984Model < handle & mlkinetics.QuadraticModel
             ps = med.petPointSpread();
             cbf_ic__ = this.cbf_ic.blurred(ps)*this.recovery_coeff; % pre-blur polynomial
             f_ic__ = mlkinetics.OxyMetabConversion.cbfToF1(cbf_ic__);
-            cbv_ic__ = this.cbv_ic.blurred(ps); % pre-blur polynomial
+            cbv_ic__ = this.cbv_ic.blurred(ps); % pre-blur polynomial; integral_artery_oxygen converts cbv -> v1
 
             % quadratic models
             obsWaterMetab = this.obsFromAif(this.artery_water_metab, this.canonical_f); % time series -> \int_t rho(t), in sec
@@ -89,16 +89,16 @@ classdef QuadraticMintun1984Model < handle & mlkinetics.QuadraticModel
             obsPet_ic = obsPet_ic.blurred(ps);
 
             % cbv recovery coeff.
-            [crc,crc_output] = this.cbv_recovery_coeff(cbv_ic__, obsPet_ic, poly12_ic, poly34_ic);
+            %[crc,crc_output] = this.cbv_recovery_coeff(cbv_ic__, obsPet_ic, poly12_ic, poly34_ic);
+            crc = 1;
+            crc_output = "";
 
             % oef by quadratic models
             numerator_ic = obsPet_ic - poly12_ic - cbv_ic__*this.integral_artery_oxygen*crc; % N.B. confusion of a1,a2,a3,a4 by Herscovitch 1985
-            numerator_ic = numerator_ic.thresh(0);
             numerator_ic.fileprefix = sprintf("%s_%s_numerator_ic", prefix, stackstr());
             numerator_ic.filepath = this.oo_ic.filepath;
             numerator_ic.save();
             denominator_ic = poly34_ic - cbv_ic__*0.835*this.integral_artery_oxygen*crc;
-            denominator_ic = denominator_ic.thresh(0);
             denominator_ic.fileprefix = sprintf("%s_%s_denominator_ic", prefix, stackstr());
             denominator_ic.filepath = this.oo_ic.filepath;
             denominator_ic.save();
@@ -109,6 +109,8 @@ classdef QuadraticMintun1984Model < handle & mlkinetics.QuadraticModel
             %ratio_ic = ratio_ic.thresh(0);
             %ratio_ic = ratio_ic.uthresh(1);
             img = ratio_ic.imagingFormat.img;
+            img(img < 0) = 0;
+            img(img > 1) = 1;
             
             soln = copy(this.oo_ic.imagingFormat);
             soln.img = single(img);
