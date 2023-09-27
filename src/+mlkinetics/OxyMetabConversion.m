@@ -15,6 +15,9 @@ classdef OxyMetabConversion < handle & mlsystem.IHandle
         LAMBDA = 0.95                % brain-blood equilibrium partition coefficient, mL/mL, Herscovitch, Raichle, JCBFM (1985) 5:65
         RATIO_SMALL_LARGE_HCT = 0.85 % Grubb, et al., 1978
         RBC_FACTOR = 0.766           % per Tom Videen, metproc.inc, line 193  
+        
+        NOMINAL_O2_CONTENT = 0.17    % mL O2.  Estimated from Ito, Eur J Nucl Med Mol Imaging (2004) 31:635-643.
+                                     % DOI 10.1007/s00259-003-1430-8
     end
 
     methods

@@ -4,15 +4,17 @@ classdef (Sealed) MipIdifKit < handle & mlkinetics.IdifKit
     %  
     %  Created 16-Jul-2023 23:28:35 by jjlee in repository /Users/jjlee/MATLAB-Drive/mlkinetics/src/+mlkinetics.
     %  Developed on Matlab 9.14.0.2286388 (R2023a) Update 3 for MACI64.  Copyright 2023 John J. Lee.
-    
+
     methods
         function ic = do_make_activity(this)
             ic = this.scanner_kit_.do_make_activity(decayCorrected=true);
             ic = this.buildMipIdif(ic);
+            ic = ic*this.recovery_coeff;
         end
         function ic = do_make_activity_density(this, varargin)
             ic = this.scanner_kit_.do_make_activity_density(decayCorrected=true);
             ic = this.do_buildMipIdif(ic, varargin{:});
+            ic = ic*this.recovery_coeff;
         end
         function dev = do_make_device(this)
             this.device_ = this.scanner_kit_.do_make_device();

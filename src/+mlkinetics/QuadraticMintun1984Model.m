@@ -10,10 +10,6 @@ classdef QuadraticMintun1984Model < handle & mlkinetics.QuadraticModel
                                   % DOI 10.1007/s00259-003-1430-8
     end
 
-    properties 
-        recovery_coeff = 1 % for cbf, from Fung & Carson 2013
-    end
-
     properties (Dependent)
         oo_ic
 
@@ -68,7 +64,7 @@ classdef QuadraticMintun1984Model < handle & mlkinetics.QuadraticModel
             med = this.bids_kit_.make_bids_med();
             prefix = sprintf("%s_%s", med.subjectFolder, med.sessionFolder);
             ps = med.petPointSpread();
-            cbf_ic__ = this.cbf_ic.blurred(ps)*this.recovery_coeff; % pre-blur polynomial
+            cbf_ic__ = this.cbf_ic.blurred(ps); % pre-blur polynomial
             f_ic__ = mlkinetics.OxyMetabConversion.cbfToF1(cbf_ic__);
             cbv_ic__ = this.cbv_ic.blurred(ps); % pre-blur polynomial; integral_artery_oxygen converts cbv -> v1
 
@@ -88,17 +84,12 @@ classdef QuadraticMintun1984Model < handle & mlkinetics.QuadraticModel
             obsPet_ic = mlfourd.ImagingContext2(obsPet_ifc);
             obsPet_ic = obsPet_ic.blurred(ps);
 
-            % cbv recovery coeff.
-            %[crc,crc_output] = this.cbv_recovery_coeff(cbv_ic__, obsPet_ic, poly12_ic, poly34_ic);
-            crc = 1;
-            crc_output = "";
-
             % oef by quadratic models
-            numerator_ic = obsPet_ic - poly12_ic - cbv_ic__*this.integral_artery_oxygen*crc; % N.B. confusion of a1,a2,a3,a4 by Herscovitch 1985
+            numerator_ic = obsPet_ic - poly12_ic - cbv_ic__*this.integral_artery_oxygen; % N.B. confusion of a1,a2,a3,a4 by Herscovitch 1985
             numerator_ic.fileprefix = sprintf("%s_%s_numerator_ic", prefix, stackstr());
             numerator_ic.filepath = this.oo_ic.filepath;
             numerator_ic.save();
-            denominator_ic = poly34_ic - cbv_ic__*0.835*this.integral_artery_oxygen*crc;
+            denominator_ic = poly34_ic - cbv_ic__*0.835*this.integral_artery_oxygen;
             denominator_ic.fileprefix = sprintf("%s_%s_denominator_ic", prefix, stackstr());
             denominator_ic.filepath = this.oo_ic.filepath;
             denominator_ic.save();
@@ -116,7 +107,6 @@ classdef QuadraticMintun1984Model < handle & mlkinetics.QuadraticModel
             soln.img = single(img);
             soln.fileprefix = strrep(this.oo_ic.fileprefix, "_trc-oo", "_oef");
             soln = mlfourd.ImagingContext2(soln);
-            soln.addJsonMetadata(struct(stackstr(), crc_output));
             this.product_ = soln; % fullfills mlkinetics.Model's builder design pattern for oef
 
             % plot arterial time series
@@ -194,7 +184,6 @@ classdef QuadraticMintun1984Model < handle & mlkinetics.QuadraticModel
         function this = create(varargin)
 
             this = mlkinetics.QuadraticMintun1984Model(varargin{:});
-            
             [this.measurement_,this.timesMid_,t0,this.artery_interpolated_] = this.scanner_kit_.mixTacAif( ...
                 this.scanner_kit_, ...
                 scanner_kit=this.scanner_kit_, ...

@@ -52,31 +52,55 @@ classdef (Sealed) OxyMetabKit < handle & mlkinetics.KineticsKit
             end
             cbf = this.do_make_K1(varargin{:});
         end
-        function oef = do_make_oef(~, varargin)
+        function oef = do_make_oef(this, opts)
             %% oef ~ oxygen extraction fraction \in [0,1]
-            mdl = this.model_kit_.make_model(varargin{:});
+
+            arguments
+                this mlkinetics.OxyMetabKit
+                opts.cbf_ic mlfourd.ImagingContext2
+                opts.cbv_ic mlfourd.ImagingContext2
+            end
+
+            data = struct("cbf_ic", opts.cbf_ic, "cbv_ic", opts.cbv_ic);
+            mdl = this.model_kit_.make_model( ...
+                data=data, ...
+                model_tags="quadratic-mintun1984");
             if isa(mdl, "mlkinetics.QuadraticModel")
-                oef = mdl.make_solution();
+                oef = this.model_kit_.make_solution();
                 return
             end
             oef = this.do_make_E(varargin{:});
         end
-        function cmro2 = do_make_cmro2(~, varargin)
+        function cmro2 = do_make_cmro2(this, opts)
             %% cmro2 ~ metabolic rate for oxygen ~ \mu mol/min/hg
-            mdl = this.model_kit_.make_model(varargin{:});
-            if isa(mdl, "mlkinetics.QuadraticModel")
-                cmro2 = mdl.make_solution();
-                return
+
+            arguments
+                this mlkinetics.OxyMetabKit
+                opts.oef mlfourd.ImagingContext2
+                opts.cbf mlfourd.ImagingContext2
+                opts.oxygen_content double = mlkinetics.OxyMetabConversion.NOMINAL_O2_CONTENT
             end
-            cmro2 = this.do_make_R(varargin{:});            
+
+            cmro2 = this.do_make_R( ...
+                E=opts.oef_ic, cbf=opts.cbf_ic, content=opts.oxygen_content);
         end
         function E = do_make_E(this, varargin)
             %% E ~ extraction fraction \in [0, 1]
             E = nan;
         end
-        function R = do_make_R(this, varargin)
+        function R = do_make_R(this, opts)
             %% R ~ cerebral metabolic rate ~ \mu mol/min/hg
-            R = nan;
+            
+            arguments
+                this mlkinetics.OxyMetabKit
+                opts.E mlfourd.ImagingContext2
+                opts.cbf mlfourd.ImagingContext2
+                opts.content double
+            end
+
+            R = opts.E.*opts.cbf*opts.content;
+            R.filepath = E.filepath;
+            R.fileprefix = "";
         end
 
         function v1 = do_make_v1(this, varargin)

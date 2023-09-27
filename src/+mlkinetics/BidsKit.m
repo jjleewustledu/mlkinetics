@@ -64,6 +64,8 @@ classdef (Sealed) BidsKit < handle & mlsystem.IHandle
             save(fn, 'this')
         end
         function s = sprintf(this, varargin)
+            med = this.make_bids_med(varargin{:});
+            s = sprintf("%s_%s", med.subjectFolder, med.sessionFolder);
         end
     end
 

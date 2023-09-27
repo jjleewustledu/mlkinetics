@@ -15,6 +15,16 @@ classdef (Abstract) InputFuncKit < handle & mlsystem.IHandle
         do_make_device(this)
     end
 
+    properties (Dependent)
+        recovery_coeff % multiplies input function
+    end
+
+    methods %% GET
+        function g = get.recovery_coeff(this)
+            g = this.recovery_coeff_;
+        end
+    end
+
     methods
         function h = do_make_plot(this)
             h = figure;
@@ -47,6 +57,7 @@ classdef (Abstract) InputFuncKit < handle & mlsystem.IHandle
                 opts.scanner_kit mlkinetics.ScannerKit {mustBeNonempty}
                 opts.input_func_tags string
                 opts.input_func_fqfn string
+                opts.recovery_coeff double = 1
             end
             copts = namedargs2cell(opts);
 
@@ -79,6 +90,59 @@ classdef (Abstract) InputFuncKit < handle & mlsystem.IHandle
                 return
             end
         end
+        function ic = estimate_recovery_coeff(opts)
+            arguments
+                opts.scan_path {mustBeFolder}
+                opts.scan_fqfn {mustBeFile}
+                opts.idif_fqfn {mustBeFile}
+                opts.tracer_tags {mustBeTextScalar}
+                opts.model_tags {mustBeTextScalar}
+            end
+
+            import mlkinetics.*
+            bk = BidsKit.create( ...
+                bids_tags="ccir1211", bids_fqfn=opts.scan_fqfn);
+            tk = TracerKit.create( ...
+                bids_kit=bk, ...
+                ref_source_props=datetime(2022,2,1, TimeZone="local"), ...
+                tracer_tags=opts.tracer_tags, ...
+                counter_tags="caprac");
+            sk = ScannerKit.create( ...
+                bids_kit=bk, tracer_kit=tk, scanner_tags="vision");
+            ifk = InputFuncKit.create( ...
+                bids_kit=bk, tracer_kit=tk, scanner_kit=sk, ...
+                input_func_tags="nifti", ...
+                input_func_fqfn=opts.idif_fqfn);
+            ifk_art = InputFuncKit.create( ...
+                bids_kit=bk, tracer_kit=tk, scanner_kit=sk, ...
+                input_func_tags="twilite");
+            pk = [];
+
+            % make two solutions:  idif & twilite
+            mk = ModelKit.create( ...
+                bids_kit=bk, tracer_kit=tk, scanner_kit=sk, input_func_kit=ifk, parc_kit=pk, ...
+                data=struct([]), ...
+                model_tags=opts.model_tags);
+            soln = mk.make_solution();
+            mk_art = ModelKit.create( ...
+                bids_kit=bk, tracer_kit=tk, scanner_kit=sk, input_func_kit=ifk_art, parc_kit=pk, ...
+                data=struct([]), ...
+                model_tags=opts.model_tags);
+            soln_art = mk_art.make_solution();
+
+            % selection mask
+            med = bk.do_make_med();
+            select = logical(med.dlicv_ic.imagingFormat.img);
+
+            % select recovery coeff from 3D
+            ic = soln_art./soln;
+            ic.fileprefix = bk.sprintf()+"_"+stackstr();
+            ic.scrubNanInf()
+            rc = ic.imagingFormat.img(select);
+            
+            fprintf("%s: recovery coeff. = %g +/- %g", ...
+                stackstr(), mean(rc, "omitnan"), std(rc, 0, "omitnan"))
+        end
     end
 
     %% PROTECTED
@@ -89,6 +153,7 @@ classdef (Abstract) InputFuncKit < handle & mlsystem.IHandle
         input_func_fqfn_
         input_func_ic_
         input_func_tags_
+        recovery_coeff_
         scanner_kit_
         tracer_kit_        
     end
@@ -111,6 +176,7 @@ classdef (Abstract) InputFuncKit < handle & mlsystem.IHandle
                 opts.scanner_kit mlkinetics.ScannerKit {mustBeNonempty}
                 opts.input_func_tags string = ""
                 opts.input_func_fqfn string = ""
+                opts.recovery_coeff double = 1
             end
 
             for f = asrow(fields(opts))

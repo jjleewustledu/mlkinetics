@@ -11,11 +11,13 @@ classdef NiftiInputFuncKit < handle & mlkinetics.IdifKit
             ic_ = do_make_activity_density(this);
             vox_vol = prod(ic_.mmppix)/1000; % mm^3 ~ \mu L
             ic = ic_*vox_vol;
+            ic = ic*this.recovery_coeff;
         end
         function ic = do_make_activity_density(this)
             %% Bq/mL
 
             ic = copy(this.input_func_ic_);
+            ic = ic*this.recovery_coeff;
         end
         function dev = do_make_device(this)
             dev = this.scanner_kit_.do_make_device();
