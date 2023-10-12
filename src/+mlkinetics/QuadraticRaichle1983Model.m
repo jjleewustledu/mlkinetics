@@ -21,6 +21,27 @@ classdef QuadraticRaichle1983Model < handle & mlkinetics.QuadraticModel
     end
 
     methods
+        function mdl = buildModel(~, obs, cbf)
+            %% buildModel 
+            %  @param obs are numeric PET_{obs} := \int_{t \in \text{obs}} dt' \varrho(t').
+            %  @param cbf are numeric CBF or similar flows in mL/hg/min.
+            %  @returns mdl.  A1, A2 are in mdl.Coefficients{:,'Estimate'}.
+            %  See also:  https://www.mathworks.com/help/releases/R2016b/stats/nonlinear-regression-workflow.html
+            
+            fprintf('QuadraticNumeric.buildModel ..........\n');
+            mdl = fitnlm( ...
+                ascolumn(obs), ...
+                ascolumn(cbf), ...
+                @mlkinetics.QuadraticModel.obsPetQuadraticModel, ...
+                [1 1]);
+            disp(mdl)
+            fprintf('mdl.RMSE -> %g, min(rho) -> %g, max(rho) -> %g\n', mdl.RMSE, min(obs), max(obs));
+            if ~isempty(getenv('DEBUG'))
+                plotResiduals(mdl);
+                plotDiagnostics(mdl, 'cookd');
+                plotSlice(mdl);
+            end
+        end
         function soln = make_solution(this)
 
             % check dynamic imaging
@@ -30,7 +51,7 @@ classdef QuadraticRaichle1983Model < handle & mlkinetics.QuadraticModel
 
             obsPet = this.obsFromTac(this.measurement_, t0=this.t0_, tF=this.tF_);
             obsAif = this.obsFromAif(this.artery_interpolated_, this.canonical_f);
-            this.modelA = this.buildQuadraticModel(obsAif, this.canonical_cbf);
+            this.modelA = this.buildModel(obsAif, this.canonical_cbf);
             img = this.a1*obsPet.^2 + this.a2*obsPet; % cbf ~ mL/hg/min
             
             soln = copy(this.ho_ic.imagingFormat);
@@ -55,7 +76,7 @@ classdef QuadraticRaichle1983Model < handle & mlkinetics.QuadraticModel
 
             this = mlkinetics.QuadraticRaichle1983Model(varargin{:});
             
-            [this.measurement_,this.timesMid_,t0,this.artery_interpolated_] = this.scanner_kit_.mixTacAif( ...
+            [this.measurement_,this.timesMid_,t0,this.artery_interpolated_] = this.mixTacAif( ...
                 this.scanner_kit_, ...
                 scanner_kit=this.scanner_kit_, ...
                 input_func_kit=this.input_func_kit_, ...
@@ -72,27 +93,6 @@ classdef QuadraticRaichle1983Model < handle & mlkinetics.QuadraticModel
     end
 
     methods (Access = private)
-        function mdl = buildQuadraticModel(~, obs, cbf)
-            %% BUILDQUADRATICMODEL 
-            %  @param obs are numeric PET_{obs} := \int_{t \in \text{obs}} dt' \varrho(t').
-            %  @param cbf are numeric CBF or similar flows in mL/hg/min.
-            %  @returns mdl.  A1, A2 are in mdl.Coefficients{:,'Estimate'}.
-            %  See also:  https://www.mathworks.com/help/releases/R2016b/stats/nonlinear-regression-workflow.html
-            
-            fprintf('QuadraticNumeric.buildQuadraticModel ..........\n');
-            mdl = fitnlm( ...
-                ascolumn(obs), ...
-                ascolumn(cbf), ...
-                @mlkinetics.QuadraticModel.obsPetQuadraticModel, ...
-                [1 1]);
-            disp(mdl)
-            fprintf('mdl.RMSE -> %g, min(rho) -> %g, max(rho) -> %g\n', mdl.RMSE, min(obs), max(obs));
-            if ~isempty(getenv('DEBUG'))
-                plotResiduals(mdl);
-                plotDiagnostics(mdl, 'cookd');
-                plotSlice(mdl);
-            end
-        end
         function this = QuadraticRaichle1983Model(varargin)
             this = this@mlkinetics.QuadraticModel(varargin{:});
         end

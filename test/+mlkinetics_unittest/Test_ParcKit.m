@@ -6,6 +6,8 @@ classdef Test_ParcKit < matlab.unittest.TestCase
     %  Developed on Matlab 9.14.0.2254940 (R2023a) Update 2 for MACI64.  Copyright 2023 John J. Lee.
     
     properties
+        testDir
+        testFqfn
         testObj
     end
     
@@ -21,7 +23,15 @@ classdef Test_ParcKit < matlab.unittest.TestCase
     methods (TestClassSetup)
         function setupParcKit(this)
             import mlkinetics.*
-            this.testObj_ = ParcKit();
+            this.testDir = ...
+                fullfile(getenv("SINGULARITY_HOME"), "CCIR_01211", "derivatives", "sub-108293", "ses-20210421", "pet");
+            this.testFqfn = fullfile(this.testDir, "sub-108293_ses-20210421154248_trc-oo_proc-dyn_pet_ScannerKit_do_make_activity_density_on_T1w.nii.gz");
+            bk = BidsKit.create( ...
+                bids_tags="ccir1211", bids_fqfn=this.testFqfn);
+            rk = RepresentationKit.create( ...
+                representation_tags="trivial");
+            this.testObj_ = ParcKit.create( ...
+                bids_kit=bk, representation_kit=rk, parc_tags="wmparc");
         end
     end
     

@@ -1,6 +1,6 @@
 classdef QuadraticMintun1984Model < handle & mlkinetics.QuadraticModel
     %% QUADRATICMINTUN1984MODEL
-    %  N.B. assumptions made in metabolize(this, ).
+    %  N.B. assumptions made in buildMetabolites(this, ).
     %  
     %  Created 06-Sep-2023 15:20:40 by jjlee in repository /Users/jjlee/MATLAB-Drive/mlkinetics/src/+mlkinetics.
     %  Developed on Matlab 9.14.0.2337262 (R2023a) Update 5 for MACI64.  Copyright 2023 John J. Lee.
@@ -53,6 +53,57 @@ classdef QuadraticMintun1984Model < handle & mlkinetics.QuadraticModel
     end
 
     methods
+        function this = buildMetabolites(this)
+            import mlkinetics.OxyMetabConversion
+
+            [~,idx0] = max(this.artery_interpolated_ > 0.05*max(this.artery_interpolated_));
+            idxU = idx0 + 90;
+            metabFrac = 0.5; % activity(HO)/(activity(HO) + activity(OO)) at 90 sec
+            n = length(this.artery_interpolated_);
+            
+            %% estimate shape of water of metabolism
+            shape = zeros(1, n);
+            n1 = n - idx0 + 1;
+            y = (n - idx0)/(idxU - idx0);
+            shape(end-n1+1:end) = linspace(0, y, n1); % shape(idxU) == 1
+            ductimes = zeros(1,n);
+            ductimes(idx0:end) = 0:(n1-1);
+            ducshape = shape .* 2.^(-(ductimes - idxU + 1)/122.2416); % decay-uncorrected
+            
+            %% set scale of artery_h2o
+            metabScale = metabFrac*this.artery_interpolated_(idxU); % activity water of metab \approx activity of oxygen after 90 sec
+            metabScale = metabScale*OxyMetabConversion.DENSITY_PLASMA/OxyMetabConversion.DENSITY_BLOOD;
+            
+            %% set internal params
+            this.artery_water_metab_ = metabScale*ducshape;     
+            select = this.artery_water_metab_ > this.artery_interpolated_;
+            this.artery_water_metab_(select) = this.artery_interpolated_(select);
+            this.artery_oxygen_ = this.artery_interpolated_ - this.artery_water_metab_;
+            this.integral_artery_oxygen_ = ...
+                0.01*OxyMetabConversion.RATIO_SMALL_LARGE_HCT*OxyMetabConversion.DENSITY_BRAIN* ...
+                trapz(this.artery_oxygen_(this.t0_+1:this.tF_+1));
+        end
+        function mdl = buildModel(~, obs, f1)
+            %% buildModel 
+            %  @param obs are numeric PET_{obs} := \int_{t \in \text{obs}} dt' \varrho(t').
+            %  @param f1 are numeric F1 or similar flows in 1/s.
+            %  @returns mdl.  A1, A2 are in mdl.Coefficients{:,'Estimate'}.
+            %  See also:  https://www.mathworks.com/help/releases/R2016b/stats/nonlinear-regression-workflow.html
+            
+            fprintf('QuadraticMintun1984Model.buildModel ..........\n');
+            mdl = fitnlm( ...
+                ascolumn(f1), ...
+                ascolumn(obs), ...
+                @mlkinetics.QuadraticModel.obsPetQuadraticModel, ...
+                [1 1]);
+            disp(mdl)
+            fprintf('mdl.RMSE -> %g, min(rho) -> %g, max(rho) -> %g\n', mdl.RMSE, min(obs), max(obs));
+            if ~isempty(getenv('DEBUG'))
+                plotResiduals(mdl);
+                plotDiagnostics(mdl, 'cookd');
+                plotSlice(mdl);
+            end
+        end
         function soln = make_solution(this)
 
             % check dynamic imaging
@@ -70,10 +121,10 @@ classdef QuadraticMintun1984Model < handle & mlkinetics.QuadraticModel
 
             % quadratic models
             obsWaterMetab = this.obsFromAif(this.artery_water_metab, this.canonical_f); % time series -> \int_t rho(t), in sec
-            this.modelB12 = this.buildQuadraticModel(obsWaterMetab, this.canonical_f); % N.B. nonlin model mapping f -> obs            
+            this.modelB12 = this.buildModel(obsWaterMetab, this.canonical_f); % N.B. nonlin model mapping f -> obs            
             
             obsOxygen = this.obsFromAif(this.artery_oxygen, this.canonical_f); % time series -> \int_t rho(t), in sec
-            this.modelB34 = this.buildQuadraticModel(obsOxygen, this.canonical_f); % N.B. nonlin model mapping f -> obs
+            this.modelB34 = this.buildModel(obsOxygen, this.canonical_f); % N.B. nonlin model mapping f -> obs
             
             poly12_ic = f_ic__.^2.*this.b1 + f_ic__.*this.b2;
             poly34_ic = f_ic__.^2.*this.b3 + f_ic__.*this.b4;
@@ -142,36 +193,6 @@ classdef QuadraticMintun1984Model < handle & mlkinetics.QuadraticModel
                 warning("mlkinetics:RunTimeWarning", "%s: exitflag->%g", stackstr(), exitflag)
             end
         end
-        function this = metabolize(this)
-            import mlkinetics.OxyMetabConversion
-
-            [~,idx0] = max(this.artery_interpolated_ > 0.05*max(this.artery_interpolated_));
-            idxU = idx0 + 90;
-            metabFrac = 0.5; % activity(HO)/(activity(HO) + activity(OO)) at 90 sec
-            n = length(this.artery_interpolated_);
-            
-            %% estimate shape of water of metabolism
-            shape = zeros(1, n);
-            n1 = n - idx0 + 1;
-            y = (n - idx0)/(idxU - idx0);
-            shape(end-n1+1:end) = linspace(0, y, n1); % shape(idxU) == 1
-            ductimes = zeros(1,n);
-            ductimes(idx0:end) = 0:(n1-1);
-            ducshape = shape .* 2.^(-(ductimes - idxU + 1)/122.2416); % decay-uncorrected
-            
-            %% set scale of artery_h2o
-            metabScale = metabFrac*this.artery_interpolated_(idxU); % activity water of metab \approx activity of oxygen after 90 sec
-            metabScale = metabScale*OxyMetabConversion.DENSITY_PLASMA/OxyMetabConversion.DENSITY_BLOOD;
-            
-            %% set internal params
-            this.artery_water_metab_ = metabScale*ducshape;     
-            select = this.artery_water_metab_ > this.artery_interpolated_;
-            this.artery_water_metab_(select) = this.artery_interpolated_(select);
-            this.artery_oxygen_ = this.artery_interpolated_ - this.artery_water_metab_;
-            this.integral_artery_oxygen_ = ...
-                0.01*OxyMetabConversion.RATIO_SMALL_LARGE_HCT*OxyMetabConversion.DENSITY_BRAIN* ...
-                trapz(this.artery_oxygen_(this.t0_+1:this.tF_+1));
-        end
         function t = tauObs(~)
             t = 40;
         end
@@ -184,7 +205,7 @@ classdef QuadraticMintun1984Model < handle & mlkinetics.QuadraticModel
         function this = create(varargin)
 
             this = mlkinetics.QuadraticMintun1984Model(varargin{:});
-            [this.measurement_,this.timesMid_,t0,this.artery_interpolated_] = this.scanner_kit_.mixTacAif( ...
+            [this.measurement_,this.timesMid_,t0,this.artery_interpolated_] = this.mixTacAif( ...
                 this.scanner_kit_, ...
                 scanner_kit=this.scanner_kit_, ...
                 input_func_kit=this.input_func_kit_, ...
@@ -200,7 +221,7 @@ classdef QuadraticMintun1984Model < handle & mlkinetics.QuadraticModel
             this.cbv_ic_ = this.data_.cbv_ic;
 
             % apply Mintun's kinetics assumptions
-            this = metabolize(this);
+            this = buildMetabolites(this);
         end
     end
 
@@ -217,27 +238,6 @@ classdef QuadraticMintun1984Model < handle & mlkinetics.QuadraticModel
     end
 
     methods (Access=private)
-        function mdl = buildQuadraticModel(~, obs, f1)
-            %% BUILDQUADRATICMODEL 
-            %  @param obs are numeric PET_{obs} := \int_{t \in \text{obs}} dt' \varrho(t').
-            %  @param f1 are numeric F1 or similar flows in 1/s.
-            %  @returns mdl.  A1, A2 are in mdl.Coefficients{:,'Estimate'}.
-            %  See also:  https://www.mathworks.com/help/releases/R2016b/stats/nonlinear-regression-workflow.html
-            
-            fprintf('QuadraticNumeric.buildQuadraticModel ..........\n');
-            mdl = fitnlm( ...
-                ascolumn(f1), ...
-                ascolumn(obs), ...
-                @mlkinetics.QuadraticModel.obsPetQuadraticModel, ...
-                [1 1]);
-            disp(mdl)
-            fprintf('mdl.RMSE -> %g, min(rho) -> %g, max(rho) -> %g\n', mdl.RMSE, min(obs), max(obs));
-            if ~isempty(getenv('DEBUG'))
-                plotResiduals(mdl);
-                plotDiagnostics(mdl, 'cookd');
-                plotSlice(mdl);
-            end
-        end
         function this = QuadraticMintun1984Model(varargin)
             this = this@mlkinetics.QuadraticModel(varargin{:});
         end

@@ -11,6 +11,17 @@ classdef (Abstract) ScannerKit < handle & mlsystem.IHandle
         do_make_device(this) % incorporates calibrations
     end
 
+    properties (Dependent)
+        decayCorrected % false for 15O
+    end
+
+    methods %% GET
+        function g = get.decayCorrected(this)
+            rn = this.tracer_kit_.make_radionuclides();
+            g = ~strcmpi(rn.isotope, "15O");
+        end
+    end
+
     methods
 
         %% make related products, with specialty relationships specified by the factory
@@ -29,7 +40,7 @@ classdef (Abstract) ScannerKit < handle & mlsystem.IHandle
 
             dev = do_make_device(this);
             a = dev.activity('typ', 'mlfourd.ImagingContext2', varargin{:});
-            ic = this.buildImagingContext(a);
+            ic = this.do_make_imaging(a);
         end
         function ic = do_make_activity_density(this, varargin)
             %% Bq/mL
@@ -45,7 +56,21 @@ classdef (Abstract) ScannerKit < handle & mlsystem.IHandle
 
             dev = do_make_device(this);
             a = dev.activityDensity('typ', 'mlfourd.ImagingContext2', varargin{:});
-            ic = this.buildImagingContext(a);
+            ic = this.do_make_imaging(a);
+        end
+        function ic = do_make_imaging(this, measurement)
+            arguments
+                this mlkinetics.ScannerKit
+                measurement mlfourd.ImagingContext2
+            end
+            med_ = this.bids_kit_.make_bids_med();
+            ic_ = med_.imagingContext;
+            fqfp = ic_.fqfileprefix;
+            if ~contains(fqfp, stackstr(3))
+                fqfp = sprintf("%s_%s", ic_.fqfileprefix, stackstr(3));
+            end
+            ic = copy(measurement);
+            ic.fqfileprefix = fqfp;
         end
         function ic = do_make_view(this)
             if isempty(this.device_)
@@ -228,7 +253,7 @@ classdef (Abstract) ScannerKit < handle & mlsystem.IHandle
             % synchronize decay correction times
             arterialDev.datetimeForDecayCorrection = scannerDev.datetimeForDecayCorrection;            
         end        
-        function mixed = mix(obj, obj2, f, varargin)
+        function mixed = mixImagingContexts(obj, obj2, f, varargin)
             %  Args:
             %      obj is understood by mlfourd.ImagingContext2
             %      obj2 is understood by mlfourd.ImagingContext2
@@ -258,7 +283,7 @@ classdef (Abstract) ScannerKit < handle & mlsystem.IHandle
         function [scan_,timesMid_,aif_] = mixScannersAifsAugmented(varargin)
             
             import mlkinetics.ScannerKit
-            import mlkinetics.ScannerKit.mix
+            import mlkinetics.ScannerKit.mixImagingContexts
             
             ip = inputParser;
             ip.KeepUnmatched = true;
@@ -309,8 +334,8 @@ classdef (Abstract) ScannerKit < handle & mlsystem.IHandle
             aif2(aif2 < 0) = 0;
             scan2(scan2 < 0) = 0;
             
-            scan_ = mix(scan, scan2, ipr.fracMixing); % calibrated, decaying
-            aif_ = mix(aif, aif2, ipr.fracMixing);
+            scan_ = mixImagingContexts(scan, scan2, ipr.fracMixing); % calibrated, decaying
+            aif_ = mixImagingContexts(aif, aif2, ipr.fracMixing);
         end
         function [tac__,timesMid__,t0__,aif__,Dt,datetimePeak] = mixTacAif(devkit, varargin)
             %  @return taus__ are the durations of emission frames
@@ -339,7 +364,7 @@ classdef (Abstract) ScannerKit < handle & mlsystem.IHandle
             sk = ipr.scanner_kit; 
             s = sk.do_make_device();
             s = s.masked(ipr.roi);
-            tac = s.activityDensity();
+            tac = s.activityDensity(decayCorrected=ipr.scanner_kit.decayCorrected);
             tac(tac < 0) = 0;    
             tac = ad.normalizationFactor*tac; % empirical normalization                   
             tac__ = tac;
@@ -358,7 +383,7 @@ classdef (Abstract) ScannerKit < handle & mlsystem.IHandle
             a0 = ifk.do_make_device();
             [a, datetimePeak] = mlkinetics.ScannerKit.alignArterialToScanner( ...
                 a0, s, 'sameWorldline', false);
-            aif = a.activityDensity('Nt', Nt);
+            aif = a.activityDensity(Nt=Nt, decayCorrected=ipr.scanner_kit.decayCorrected);
             switch class(a)
                 case 'mlswisstrace.TwiliteDevice'
                     t = (0:Nt-1) - seconds(s.datetime0 - a.datetime0);
@@ -404,7 +429,7 @@ classdef (Abstract) ScannerKit < handle & mlsystem.IHandle
             
             % scannerDevs provide calibrations & ROI-volume averaging            
             s = ipr.scanner.volumeAveraged(ipr.roi);
-            tac = s.activityDensity();
+            tac = s.activityDensity(decayCorrected=ipr.scanner_kit.decayCorrected);
             tac(tac < 0) = 0;                       
             tac = ad.normalizationFactor*tac; % empirical normalization
             tac__ = tac;
@@ -415,7 +440,7 @@ classdef (Abstract) ScannerKit < handle & mlsystem.IHandle
             a0 = ipr.arterial;
             [a, datetimePeak] = devkit.alignArterialToScanner( ...
                 a0, s, 'sameWorldline', false);
-            aif = a.activityDensity('Nt', Nt);
+            aif = a.activityDensity(Nt=Nt, decayCorrected=ipr.scanner_kit.decayCorrected);
             switch class(a)
                 case 'mlswisstrace.TwiliteDevice'
                     t = (0:Nt-1) - seconds(s.datetime0 - a.datetime0);
@@ -449,7 +474,7 @@ classdef (Abstract) ScannerKit < handle & mlsystem.IHandle
             
             % scannerDevs provide calibrations & ROI-volume averaging            
             s = ipr.scanner.volumeAveraged(ipr.roi);
-            tac = s.activityDensity();
+            tac = s.activityDensity(decayCorrected=ipr.scanner_kit.decayCorrected);
             tac(tac < 0) = 0;                       
             tac = ad.normalizationFactor*tac; % empirical normalization
             tac__ = tac;
@@ -460,8 +485,8 @@ classdef (Abstract) ScannerKit < handle & mlsystem.IHandle
             [a1, datetimePeak] = devkit.alignArterialToScanner( ...
                 ipr.arterial{1}, s, 'sameWorldline', false);
             Dt = a1.Dt;
-            aif1 = a1.activityDensity();
-            aif2 = ipr.arterial{2}.activityDensityInterp1(); % 1 Hz interp1
+            aif1 = a1.activityDensity(decayCorrected=ipr.scanner_kit.decayCorrected); % 1 Hz Twilite
+            aif2 = ipr.arterial{2}.activityDensityInterp1(decayCorrected=ipr.scanner_kit.decayCorrected); % 1 Hz interp1 of Caprac
             daif = aif1(end) - aif2(1);
             aif = [aif1, aif2+daif];
             if length(aif) > Nt
@@ -479,8 +504,7 @@ classdef (Abstract) ScannerKit < handle & mlsystem.IHandle
             aif = interp1([-ad.tBuffer t], [0 aif], -ad.tBuffer:s.timesMid(end), 'linear', 0);
             aif(aif < 0) = 0;   
             aif__ = aif;
-        end
-        
+        end        
         function [tac__,timesMid__,t0__,idif__,Dt,datetimePeak] = mixTacIdif(devkit, varargin)
             %  @return taus__ are the durations of emission frames
             %  @return t0__ is the start of the first emission frame.
@@ -502,7 +526,7 @@ classdef (Abstract) ScannerKit < handle & mlsystem.IHandle
             sk = ipr.scanner_kit; 
             s = sk.do_make_device();
             s = s.masked(ipr.roi);
-            tac = s.activityDensity();
+            tac = s.activityDensity(decayCorrected=ipr.scanner_kit.decayCorrected);
             tac(tac < 0) = 0;                       
             tac__ = tac;
             taus__ = s.taus;
@@ -516,7 +540,7 @@ classdef (Abstract) ScannerKit < handle & mlsystem.IHandle
             
             % idif
             ifk = ipr.input_func_kit;
-            idif = ifk.do_make_activity_density();   
+            idif = ifk.do_make_activity_density(decayCorrected=ipr.scanner_kit.decayCorrected);   
             idif = asrow(idif.imagingFormat.img);
             t = s.timesMid;
             
@@ -529,11 +553,11 @@ classdef (Abstract) ScannerKit < handle & mlsystem.IHandle
             Dt = 0;
             datetimePeak = NaT;
         end
-        function [tac__,timesMid__,aif__,Dt] = mixTacsAifsAugmented(devkit, devkit2, varargin)
+        function [tac__,timesMid__,aif__,Dt,datetimePeak] = mixTacsAifsAugmented(devkit, devkit2, varargin)
             
             import mlkinetics.ScannerKit
             import mlkinetics.ScannerKit.mixTacAifAugmented
-            import mlkinetics.ScannerKit.mix
+            import mlkinetics.ScannerKit.mixImagingContexts
             
             ip = inputParser;
             ip.KeepUnmatched = true;
@@ -569,7 +593,7 @@ classdef (Abstract) ScannerKit < handle & mlsystem.IHandle
             % align tac2 with tac
             tac = interp1([-1 s.timesMid], [0 tac], s.timesMid(1):s.timesMid(end), 'linear', 0);
             tac2 = interp1((offset + [-1 s2.timesMid]), [0 tac2], s.timesMid(1):s.timesMid(end), 'linear', 0);
-            tac__ = mix(tac, tac2, ipr.fracMixing); 
+            tac__ = mixImagingContexts(tac, tac2, ipr.fracMixing); 
             tac__ = interp1(s.timesMid(1):s.timesMid(end), tac__, s.timesMid, 'linear', 0);
             tac__(tac__ < 0) = 0;                       
             tac__ = ad.normalizationFactor*tac__; % empirical normalization
@@ -579,7 +603,7 @@ classdef (Abstract) ScannerKit < handle & mlsystem.IHandle
             n = length(aif);
             n2 = length(aif2);
             aif2 = interp1(offset + (0:n2-1), aif2, 0:n-1, 'linear', 0);
-            aif__ = mix(aif, aif2, ipr.fracMixing); 
+            aif__ = mixImagingContexts(aif, aif2, ipr.fracMixing); 
             aif__(aif__ < 0) = 0;  
         end
         function [tac__,timesMid__,aif__,Dt,datetimePeak] = mixTacIdifAugmented(devkit, varargin)
@@ -595,7 +619,7 @@ classdef (Abstract) ScannerKit < handle & mlsystem.IHandle
             
             % scannerDevs provide calibrations & ROI-volume averaging            
             s = ipr.scanner.volumeAveraged(ipr.roi);
-            tac = s.activityDensity();
+            tac = s.activityDensity(decayCorrected=ipr.scanner_kit.decayCorrected);
             tac(tac < 0) = 0;                       
             tac = ad.normalizationFactor*tac; % empirical normalization
             tac__ = tac;
@@ -603,7 +627,7 @@ classdef (Abstract) ScannerKit < handle & mlsystem.IHandle
             
             % arterialDevs calibrate & align arterial times-series to localized scanner time-series 
             a = ipr.arterial;
-            aif = a.activityDensity();
+            aif = a.activityDensity(decayCorrected=ipr.scanner_kit.decayCorrected);
             t = a.timesMid;
             
             % use tBuffer to increase fidelity of kinetic model
@@ -629,20 +653,6 @@ classdef (Abstract) ScannerKit < handle & mlsystem.IHandle
     end
 
     methods (Access = protected)
-        function ic = buildImagingContext(this, measurement)
-            arguments
-                this mlkinetics.ScannerKit
-                measurement mlfourd.ImagingContext2
-            end
-            med_ = this.bids_kit_.make_bids_med();
-            ic_ = med_.imagingContext;
-            fqfp = ic_.fqfileprefix;
-            if ~contains(fqfp, stackstr(3))
-                fqfp = sprintf("%s_%s", ic_.fqfileprefix, stackstr(3));
-            end
-            ic = copy(measurement);
-            ic.fqfileprefix = fqfp;
-        end
         function that = copyElement(this)
             that = copyElement@matlab.mixin.Copyable(this);
             if ~isempty(this.bids_kit_)

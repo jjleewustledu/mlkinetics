@@ -154,7 +154,7 @@ classdef QuadraticKit < handle
             vs_ = mlfourd.ImagingContext2(vs_);
             popd(pwd0);
         end
-        function this = call(this, request)
+        function this = build_all(this, request)
             arguments
                 this mlkinetics.QuadraticKit
                 request {mustBeTextScalar}
@@ -171,7 +171,7 @@ classdef QuadraticKit < handle
                     this.buildCbv();
                     this.buildCmro2();
                 otherwise
-                    error('mlkinetics:ValueError', 'QuadraticKit.call.request -> %s', request)
+                    error('mlkinetics:ValueError', 'QuadraticKit.build_all.request -> %s', request)
             end
         end
 

@@ -68,7 +68,7 @@ classdef Test_InputFuncKit < matlab.unittest.TestCase
                     counter_tags="caprac");
                 sk = ScannerKit.create( ...
                     bids_kit=bk, tracer_kit=tk, scanner_tags="vision");
-                ic = sk.do_make_activity_density(decayCorrected=true);
+                ic = sk.do_make_activity_density(decayCorrected=false);
                 ic.filepath = derivs;
                 ic.save();
                 popd(pwd0);
@@ -191,34 +191,48 @@ classdef Test_InputFuncKit < matlab.unittest.TestCase
             disp(ic)
             ifk.do_make_plot();
         end
-        function test_mipidif_kit_do_buildMipIdif(this)
+        function test_mipidif_kit_do_make_input_func(this)
             bids_fqfn = fullfile(getenv("SINGULARITY_HOME"), ...
-                "CCIR_01211", "sourcedata", "sub-108293", 'ses-20210421144815', "pet", ...
-                "sub-108293_ses-20210421144815_trc-co_proc-BrainMoCo2-createNiftiSimple.nii.gz");
+                "CCIR_01211", "sourcedata", "sub-108293", 'ses-20210421152358', "pet", ...
+                "sub-108293_ses-20210421152358_trc-ho_proc-BrainMoCo2-createNiftiMovingAvgFrames.nii.gz");
+
+            tic
             bk = mlkinetics.BidsKit.create( ...
-                bids_tags="ccir1211", ...
+                bids_tags="ccir1211-ho", ...
                 bids_fqfn=bids_fqfn);
+            toc
+
+            tic
             tk = mlkinetics.TracerKit.create( ...
                 bids_kit=bk, ...
                 ref_source_props=datetime(2022,2,1, TimeZone="local"), ...
                 tracer_tags="15O", ...
                 counter_tags="caprac");
+            toc
+
+            tic
             sk = mlkinetics.ScannerKit.create( ...
                 bids_kit=bk, ...
                 tracer_kit=tk, ...
                 scanner_tags="vision");
-            
-            ic_pet_dyn = sk.do_make_activity_density(decayCorrected=true);
+            toc
 
+            tic
             ifk = mlkinetics.InputFuncKit.create( ...
                 bids_kit=bk, ...
                 tracer_kit=tk, ...
                 scanner_kit=sk, ...
                 input_func_tags="mipidif", ...
                 input_func_fqfn="");
+            toc
 
-            ic_mipidif = ifk.do_buildMipIdif(ic_pet_dyn, steps=logical([0 0 0 1]));
+            tic
+            ic_mipidif = ifk.do_make_input_func(steps=logical([1 1 1 1]));
+            toc
+
+            tic
             plot(ic_mipidif)
+            toc
         end
         function test_mipidif_kit_e7(this)
             %% using latest e7 recons
@@ -272,6 +286,30 @@ classdef Test_InputFuncKit < matlab.unittest.TestCase
             ifk.do_make_plot();
         end
         function test_fungidif_kit(this)
+        end
+        function test_ensureTimingData(this)
+            bids_fqfn = fullfile(getenv("SINGULARITY_HOME"), ...
+                "CCIR_01211", "sourcedata", "sub-108293", 'ses-20210421152358', "pet", ...
+                "sub-108293_ses-20210421152358_trc-ho_proc-BrainMoCo2-createNiftiMovingAvgFrames.nii.gz");
+            med = mlvg.Ccir1211Mediator(bids_fqfn);
+            j = med.json_metadata;
+            this.verifyEqual(j.start_times, 0:109)
+            this.verifyEqual(j.taus, 10*ones(1, 110))
+            this.verifyEqual(j.times, 0:109)
+            this.verifyEqual(j.timesMid, 5:114)
+            this.verifyEqual(j.timeUnit, "second")
+
+            bids_fqfn = fullfile(getenv("SINGULARITY_HOME"), ...
+                "CCIR_01211", "sourcedata", "sub-108293", 'ses-20210421', "pet", ...
+                "sub-108293_ses-20210421152358_trc-ho_proc-dyn_pet.nii.gz");
+            med1 = mlvg.Ccir1211Mediator(bids_fqfn);
+            j1 = med1.json_metadata;
+            taus1 = j1.taus;
+            this.verifyEqual(j1.start_times, cumsum(taus1) - taus1)
+            this.verifyEqual(j1.taus, taus1)
+            this.verifyEqual(j1.times, cumsum(taus1) - taus1)
+            this.verifyEqual(j1.timesMid, cumsum(taus1) - taus1/2)
+            this.verifyEqual(j1.timeUnit, "second")
         end
         function test_estimate_recovery_coeff(this)
             sub_path = fullfile(getenv("SINGULARITY_HOME"), "CCIR_01211", "derivatives", "sub-108293");

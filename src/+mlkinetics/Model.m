@@ -20,6 +20,7 @@ classdef (Abstract) Model < handle & mlsystem.IHandle
         data % ancillary data used by model
         dlicv_ic % coregistered to dynamic PET
         input_func
+        model
         product % intermediate and final products
     end
 
@@ -49,6 +50,9 @@ classdef (Abstract) Model < handle & mlsystem.IHandle
             this.input_func_ = this.input_func_kit_.do_make_activity_density();
             g = this.input_func_;
         end
+        function g = get.model(this)
+            g = this;
+        end
         function g = get.product(this)
             g = this.product_;
         end
@@ -77,6 +81,51 @@ classdef (Abstract) Model < handle & mlsystem.IHandle
 
         %% UTILITIES
 
+        function [measurement,timesMid,t0,artery_interpolated,Dt,datetimePeak] = mixTacAif(this)
+            %% adapts kinetic models to legacy mixture methods enumerated in mlkinetics.ScannerKit
+
+            arguments
+                this mlkinetics.Model                
+            end
+
+            switch class(this.input_func_kit_)
+                case 'mlkinetics.CapracKit'
+                    [measurement,timesMid,t0,artery_interpolated,Dt,datetimePeak] = this.scanner_kit_.mixTacAif( ...
+                        this.scanner_kit_, ...
+                        scanner_kit=this.scanner_kit_, ...
+                        input_func_kit=this.input_func_kit_, ...
+                        roi=this.dlicv_ic);
+                case 'mlkinetics.TwiliteKit'
+                    [measurement,timesMid,t0,artery_interpolated,Dt,datetimePeak] = this.scanner_kit_.mixTacAif( ...
+                        this.scanner_kit_, ...
+                        scanner_kit=this.scanner_kit_, ...
+                        input_func_kit=this.input_func_kit_, ...
+                        roi=this.dlicv_ic);
+                case 'mlkinetics.IdifKit'
+                    [measurement,timesMid,t0,artery_interpolated,Dt,datetimePeak] = this.scanner_kit_.mixTacIdif( ...
+                        this.scanner_kit_, ...
+                        scanner_kit=this.scanner_kit_, ...
+                        input_func_kit=this.input_func_kit_, ...
+                        roi=this.dlicv_ic);
+                case 'mlkinetics.NiftiInputFuncKit'
+                    ad_sk = this.scanner_kit_.do_make_activity_density();
+                    measurement = ad_sk.imagingFormat.img;
+                    ad_ifk = this.input_func_kit_.do_make_activity_density();
+                    j = ad_ifk.json_metadata;
+                    timesMid = j.timesMid;
+                    t0 = 0;
+                    artery = asrow(ad_ifk.imagingFormat.img);
+                    tau = timesMid(end) - timesMid(end-1);
+                    artery_interpolated = interp1(timesMid, artery, 0:timesMid(end)+tau/2);
+                    Dt = 0;
+                    [~,idxPeak] = max(artery_interpolated);
+                    dev = this.scanner_kit_.do_make_device();
+                    datetimePeak = dev.datetime0 + seconds(idxPeak-1);                    
+                otherwise
+                    error("mlkinetics:ValueError", "%s: unknown class %s", ...
+                        stackstr(), class(this.input_func_kit))
+            end
+        end
         function t = tauObs(~)    
             %% duration of valid data ~ timeCliff - t0
             t = NaN;
@@ -93,6 +142,40 @@ classdef (Abstract) Model < handle & mlsystem.IHandle
         end
     end
 
+    methods (Static)
+        function q1 = solutionOnScannerFrames(q, times_sampled)
+            %% Samples scanner scalar activity on times of midpoints of scanner frames.
+            %  @param q that is empty resets internal data for times and q1 := [].
+            %  @param q is activity that is uniformly sampled in time.
+            %  @param times_sampled are the times of the midpoints of scanner frames, all times_sampled > 0.
+            %  @return q1 has the shape of times_sampled.
+            
+            persistent times % for performance
+            if isempty(q)
+                times = [];
+                q1 = [];
+                return
+            end
+            if isempty(times)
+                times = zeros(1, length(times_sampled)+1);
+                for it = 2:length(times)
+                    % times of midpoints of scanner frames
+                    times(it) = times_sampled(it-1) + (times_sampled(it-1) - times(it-1));
+                end
+            end
+            
+            q1 = zeros(size(times_sampled));
+            Nts = length(times_sampled);
+            Nq = length(q);
+            for it = 1:Nts-1
+                indices = floor(times(it):times(it+1)) + 1;
+                q1(it) = trapz(q(indices)) / (times(it+1) - times(it));
+            end
+            indices = floor(times(Nts):Nq-1) + 1;
+            q1(Nts) = trapz(q(indices)) / (Nq - 1 - times(Nts));
+        end
+    end
+
     %% PROTECTED
 
     properties (Access = protected)
@@ -100,17 +183,17 @@ classdef (Abstract) Model < handle & mlsystem.IHandle
         data_ % ancillary value data used by model
         input_func_kit_
         model_tags_
-        parc_kit_
-        product_
+        parc_kit_        
         representation_kit_
         scanner_kit_
         tracer_kit_
 
         artery_interpolated_
         dlicv_ic_
-        input_func_ % value
+        input_func_ % 
         measurement_
-        solver_ % value
+        product_
+        solver_ % 
         t0_
         timesMid_
         tF_

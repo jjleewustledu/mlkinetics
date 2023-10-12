@@ -18,8 +18,8 @@ classdef (Sealed) FungIdifKit < handle & mlkinetics.IdifKit
             %     opts.k double {mustBeScalarOrEmpty} = 4
             %     opts.t double {mustBeVector} = [0 0 0 0.2 0.4 0.6 0.8 1 1 1]
 
-            ic = this.scanner_kit_.do_make_activity();
-            ic = this.buildFungIdif(ic, varargin{:});
+            ic = this.scanner_kit_.do_make_activity(decayCorrected=this.decayCorrected);
+            ic = this.do_make_input_func(ic, varargin{:});
         end
         function ic = do_make_activity_density(this, varargin)
             %% DO_MAKE_ACTIVITY ~ Bq/mL
@@ -33,12 +33,38 @@ classdef (Sealed) FungIdifKit < handle & mlkinetics.IdifKit
             %     opts.k double {mustBeScalarOrEmpty} = 4
             %     opts.t double {mustBeVector} = [0 0 0 0.2 0.4 0.6 0.8 1 1 1]
 
-            ic = this.scanner_kit_.do_make_activity_density();
-            ic = this.buildFungIdif(ic, varargin{:});
+            ic = this.scanner_kit_.do_make_activity_density(decayCorrected=this.decayCorrected);
+            ic = this.do_make_input_func(ic, varargin{:});
         end
         function dev = do_make_device(this)
             this.device_ = this.scanner_kit_.do_make_device();
             dev = this.device_;
+        end
+        function idif_ic = do_make_input_func(this, activity_density_ic, opts)
+            arguments
+                this mlaif.FungIdifKit
+                activity_density_ic mlfourd.ImagingContext2 {mustBeNonempty}
+                opts.mpr_coords cell = {}
+                opts.needs_reregistration logical = false
+                opts.verbose double = 0
+                opts.use_cache logical = false
+                opts.k double {mustBeScalarOrEmpty} = 4
+                opts.t double {mustBeVector} = [0 0 0 0.2 0.4 0.6 0.8 1 1 1]
+            end
+            med = this.bids_kit_.make_bids_med();
+            med.initialize(activity_density_ic);
+
+            fung2013 = mlaif.Fung2013.createForT1w( ...
+                bids=med, ...
+                coord1=opts.mpr_coords{c}(1,:), ...
+                coord2=opts.mpr_coords{c}(2,:), ...
+                timesMid=med.timesMid, ...
+                needs_reregistration=opts.needs_reregistration, ...
+                verbose=opts.verbose);
+            idif_ic = fung2013.build_all(pet_dyn=activity_density_ic, use_cache=opts.use_cache, k=opts.k, t=opts.t);
+            idif_ic.addJsonMetadata(opts);
+            idif_ic.save();
+            this.input_func_ic_ = idif_ic;
         end
     end
 
@@ -67,32 +93,6 @@ classdef (Sealed) FungIdifKit < handle & mlkinetics.IdifKit
     %% PRIVATE 
 
     methods (Access = private)
-        function idif_ic = buildFungIdif(this, activity_density_ic, opts)
-            arguments
-                this mlaif.FungIdifKit
-                activity_density_ic mlfourd.ImagingContext2 {mustBeNonempty}
-                opts.mpr_coords cell = {}
-                opts.needs_reregistration logical = false
-                opts.verbose double = 0
-                opts.use_cache logical = false
-                opts.k double {mustBeScalarOrEmpty} = 4
-                opts.t double {mustBeVector} = [0 0 0 0.2 0.4 0.6 0.8 1 1 1]
-            end
-            med = this.bids_kit_.make_bids_med();
-            med.initialize(activity_density_ic);
-
-            fung2013 = mlaif.Fung2013.createForT1w( ...
-                bids=med, ...
-                coord1=opts.mpr_coords{c}(1,:), ...
-                coord2=opts.mpr_coords{c}(2,:), ...
-                timesMid=med.timesMid, ...
-                needs_reregistration=opts.needs_reregistration, ...
-                verbose=opts.verbose);
-            idif_ic = fung2013.call(pet_dyn=activity_density_ic, use_cache=opts.use_cache, k=opts.k, t=opts.t);
-            idif_ic.addJsonMetadata(opts);
-            idif_ic.save();
-            this.input_func_ic_ = idif_ic;
-        end
         function this = FungIdifKit()
         end
     end

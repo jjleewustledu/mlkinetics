@@ -23,6 +23,12 @@ classdef (Sealed) ParcKit < handle & mlsystem.IHandle
             ld = load(varargin{:});
             this = ld.this;
         end
+        function a = make_activity(this)
+        end
+        function a = make_activity_density(this)
+        end
+        function ic = make_imaging(this)
+        end
         function parc = make_parc(this, opts)
             arguments
                 this mlkinetics.ParcKit
@@ -96,22 +102,20 @@ classdef (Sealed) ParcKit < handle & mlsystem.IHandle
             end
 
             parc = [];
-            med = opts.bids_kit.make_bids_med();
-            rep = opts.representation_kit.make_representation();
             if contains(opts.parc_tags, "schaeffer", IgnoreCase=true)
-                parc = mlrois.Schaeffer.create_for_kinetics( ...
-                    bids_med=med, ...
-                    representation=rep);
+                parc = mlkinetics.SchaefferParc.create( ...
+                    bids_kit=opts.bids_kit, ...
+                    representation_kit=opts.representation_kit);
             end
             if contains(opts.parc_tags, "wmparc", IgnoreCase=true)
-                parc = mlsurfer.Wmparc.create_for_kinetics( ...
-                    bids_med=med, ...
-                    representation=rep);
+                parc = mlkinetics.WmparcParc.create( ...
+                    bids_kit=opts.bids_kit, ...
+                    representation_kit=opts.representation_kit);
             end
             if contains(opts.parc_tags, "voxel", IgnoreCase=true)
-                parc = mlrois.Voxels.create_for_kinetics( ...
-                    bids_med=med, ...
-                    representation=rep);
+                parc = mlkinetics.VoxelParc.create( ...
+                    bids_kit=opts.bids_kit, ...
+                    representation_kit=opts.representation_kit);
             end
             if isempty(parc)
                 error("mlkinetics:ValueError", ...
@@ -119,7 +123,7 @@ classdef (Sealed) ParcKit < handle & mlsystem.IHandle
             end
 
             % store
-            this.proto_registry_(opts.parc_tags) = copy(parc);
+            this.proto_registry_(opts.parc_tags) = parc;
         end
         function this = ParcKit()
         end

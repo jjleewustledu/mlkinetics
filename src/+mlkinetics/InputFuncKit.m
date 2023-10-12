@@ -13,13 +13,19 @@ classdef (Abstract) InputFuncKit < handle & mlsystem.IHandle
         do_make_activity(this)
         do_make_activity_density(this)
         do_make_device(this)
+        do_make_input_func(this)
     end
 
     properties (Dependent)
         recovery_coeff % multiplies input function
+        decayCorrected % false for 15O
     end
 
     methods %% GET
+        function g = get.decayCorrected(this)
+            rn = this.tracer_kit_.make_radionuclides();
+            g = ~strcmpi(rn.isotope, "15O");
+        end
         function g = get.recovery_coeff(this)
             g = this.recovery_coeff_;
         end

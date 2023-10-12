@@ -131,12 +131,12 @@ classdef (Abstract) KineticsKit < handle & mlsystem.IHandle
             if contains(opts.bids_fqfn, ["trc-co","trc-oc","trc-oo","trc-ho"]) || ...
                     contains(opts.tracer_tags, "15o", IgnoreCase=true) || ...
                     contains(opts.input_func_fqfn, ["trc-co","trc-oc","trc-oo","trc-ho"]) || ...
-                    any(contains(opts.model_tags, ["cbv","cbf","oef","cmro2"], IgnoreCase=true))
+                    any(contains(opts.model_tags, ["cbv","cbf","oef","cmro2","martin","mintun","raichle"], IgnoreCase=true))
                 this = mlkinetics.OxyMetabKit.instance(copts{:});
                 return
             end
             if contains(opts.bids_fqfn, "trc-fdg") || ...
-                    any(contains(opts.model_tags, ["cmrglc","agi","ogi"], IgnoreCase=true))
+                    any(contains(opts.model_tags, ["cmrglc","agi","ogi","huang"], IgnoreCase=true))
                 this = mlkinetics.GlcMetabKit.instance(copts{:});
                 return
             end
@@ -146,6 +146,10 @@ classdef (Abstract) KineticsKit < handle & mlsystem.IHandle
             end
             if any(contains(opts.model_tags, "2tcm", IgnoreCase=true))
                 this = mlkinetics.TwoTCMKit.instance(copts{:});
+                return
+            end
+            if any(contains(opts.model_tags, "patlak", IgnoreCase=true))
+                this = mlkinetics.Patlak.instance(copts{:});
                 return
             end
             if any(contains(opts.model_tags, "ichise", IgnoreCase=true)) && ...

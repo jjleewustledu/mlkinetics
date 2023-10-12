@@ -66,7 +66,7 @@ classdef (Sealed) RepresentationKit < handle & mlsystem.IHandle
             %% bids_kit, counter_tags must be non-empty collections
 
             arguments
-                opts.representation_tags {mustBeText} = "native"
+                opts.representation_tags {mustBeText} = ""
             end
 
             this = mlkinetics.RepresentationKit();
@@ -121,13 +121,13 @@ classdef (Sealed) RepresentationKit < handle & mlsystem.IHandle
                 % volume representation on the subject's native anatomy
                 rep = mlfsl.Flirt2Native.create();
             end
-            if isempty(rep)
-                error("mlkinetics:ValueError", ...
-                    "%s: representation tags %s not supported", stackstr(), opts.representation_tags)
+            if contains(opts.representation_tags, "trivial", IgnoreCase=true) 
+                % trivial case
+                rep = mlkinetics.Representation.create();
             end
 
             % store
-            this.proto_registry_(opts.bids_tags) = copy(rep);
+            this.proto_registry_(opts.representation_tags) = rep;
         end
         function this = RepresentationKit()
         end

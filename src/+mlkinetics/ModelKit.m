@@ -111,8 +111,11 @@ classdef (Sealed) ModelKit < handle & mlsystem.IHandle
                 %opts1.representation_kit = opts1.representation_kit(idx);
                 %opts1.parc_kit = opts1.parc_kit(idx);
                 try
-                    opts1.data = opts1.data(idx);
-                catch
+                    if ~isempty(opts1.data)
+                        opts1.data = opts1.data(idx);
+                    end
+                catch ME
+                    handwarning(ME)
                 end
                 opts1.model_tags = opts1.model_tags(idx);
                 copts1 = namedargs2cell(opts1);
@@ -178,6 +181,9 @@ classdef (Sealed) ModelKit < handle & mlsystem.IHandle
             end
             if any(contains(opts.model_tags, "huang1980", IgnoreCase=true))
                 mdl = mlkinetics.Huang1980Model.create(copts{:});
+            end
+            if any(contains(opts.model_tags, "2tcm", IgnoreCase=true))
+                mdl = mlkinetics.TwoTCModel.create(copts{:});
             end
             if any(contains(opts.model_tags, "ichise2002", IgnoreCase=true))
                 mdl = mlkinetics.Ichise2002Model.create(copts{:});

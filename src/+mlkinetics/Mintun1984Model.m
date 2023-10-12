@@ -12,7 +12,7 @@ classdef Mintun1984Model < handle & mlkinetics.Model
 
             this = mlkinetics.Mintun1984Model(varargin{:});
             
-            [this.measurement_,this.timesMid_,t0,this.artery_interpolated_] = this.scanner_kit_.mixTacAif( ...
+            [this.measurement_,this.timesMid_,t0,this.artery_interpolated_] = this.mixTacAif( ...
                 this.scanner_kit_, ...
                 scanner_kit=this.scanner_kit_, ...
                 input_func_kit=this.input_func_kit_, ...
@@ -28,7 +28,7 @@ classdef Mintun1984Model < handle & mlkinetics.Model
             this.cbv_ic_ = this.data_.cbv_ic;
 
             % apply Mintun's kinetics assumptions
-            this = metabolize(this);
+            this = buildMetabolites(this);
         end
     end
 

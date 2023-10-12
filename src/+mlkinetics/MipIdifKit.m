@@ -7,24 +7,22 @@ classdef (Sealed) MipIdifKit < handle & mlkinetics.IdifKit
 
     methods
         function ic = do_make_activity(this)
-            ic = this.scanner_kit_.do_make_activity(decayCorrected=true);
+            ic = this.scanner_kit_.do_make_activity(decayCorrected=this.decayCorrected);
             ic = this.buildMipIdif(ic);
             ic = ic*this.recovery_coeff;
         end
         function ic = do_make_activity_density(this, varargin)
-            ic = this.scanner_kit_.do_make_activity_density(decayCorrected=true);
-            ic = this.do_buildMipIdif(ic, varargin{:});
+            ic = this.scanner_kit_.do_make_activity_density(decayCorrected=this.decayCorrected);
+            ic = this.do_make_input_func(ic, varargin{:});
             ic = ic*this.recovery_coeff;
         end
         function dev = do_make_device(this)
             this.device_ = this.scanner_kit_.do_make_device();
             dev = this.device_;
-        end
-       
-        function idif_ic = do_buildMipIdif(this, activity_density_ic, opts)
+        end       
+        function idif_ic = do_make_input_func(this, opts)
             arguments
                 this mlkinetics.MipIdifKit
-                activity_density_ic mlfourd.ImagingContext2 {mustBeNonempty}
                 opts.needs_reregistration logical = false
                 opts.verbose double = 0
                 opts.use_cache logical = false
@@ -39,7 +37,7 @@ classdef (Sealed) MipIdifKit < handle & mlkinetics.IdifKit
                 scanner_kit=this.scanner_kit_, ...
                 pet_avgt=opts.pet_avgt, ...
                 pet_mipt=opts.pet_mipt);
-            idif_ic = mipidif.call(pet_dyn=activity_density_ic, steps=opts.steps);
+            idif_ic = mipidif.build_all(pet_dyn=activity_density_ic, steps=opts.steps);
             idif_ic.addJsonMetadata(opts);
             idif_ic.save();
             this.input_func_ic_ = idif_ic;

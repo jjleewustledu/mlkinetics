@@ -18,21 +18,6 @@ classdef (Sealed) OxyMetabKit < handle & mlkinetics.KineticsKit
 
         %% make related products, with specialty relationships specified by the ctor
 
-        function agi = do_make_agi(this, varargin)
-            %% AGI := cmrglc - cmro2/6
-            cmro2 = this.do_make_R();
-            glcMetabKit = mlkinetics.GlcMetabKit.instance();
-            cmrglc = glcMetabKit.do_make_R();
-            agi = nan;
-        end
-        function ogi = do_make_ogi(this, varargin)
-            %% OGI := cmro2./cmrglc
-            cmro2 = this.do_make_R();
-            glcMetabKit = mlkinetics.GlcMetabKit.instance();
-            cmrglc = glcMetabKit.do_make_R();
-            ogi = nan;
-        end
-        
         function cbv = do_make_cbv(this, varargin)
             %% cbv ~ blood volume ~ mL/hg
             mdl = this.model_kit_.make_model(varargin{:});
@@ -62,45 +47,34 @@ classdef (Sealed) OxyMetabKit < handle & mlkinetics.KineticsKit
             end
 
             data = struct("cbf_ic", opts.cbf_ic, "cbv_ic", opts.cbv_ic);
-            mdl = this.model_kit_.make_model( ...
+            this.model_kit_.make_model( ...
                 data=data, ...
                 model_tags="quadratic-mintun1984");
-            if isa(mdl, "mlkinetics.QuadraticModel")
-                oef = this.model_kit_.make_solution();
-                return
-            end
-            oef = this.do_make_E(varargin{:});
+            oef = this.model_kit_.make_solution();
         end
         function cmro2 = do_make_cmro2(this, opts)
-            %% cmro2 ~ metabolic rate for oxygen ~ \mu mol/min/hg
+            %% cmro2 ~ cerebral metabolic rate for oxygen ~ \mu mol/min/hg
 
             arguments
                 this mlkinetics.OxyMetabKit
-                opts.oef mlfourd.ImagingContext2
-                opts.cbf mlfourd.ImagingContext2
-                opts.oxygen_content double = mlkinetics.OxyMetabConversion.NOMINAL_O2_CONTENT
+                opts.E_ic mlfourd.ImagingContext2
+                opts.cbf_ic mlfourd.ImagingContext2
+                opts.content double = mlkinetics.OxyMetabConversion.NOMINAL_O2_CONTENT
             end
 
-            cmro2 = this.do_make_R( ...
-                E=opts.oef_ic, cbf=opts.cbf_ic, content=opts.oxygen_content);
+            cmro2 = opts.E_ic.*opts.cbf_ic*opts.content;
+            cmro2.filepath = opts.E_ic.filepath;
+            cmro2.fileprefix = "";
         end
         function E = do_make_E(this, varargin)
             %% E ~ extraction fraction \in [0, 1]
-            E = nan;
-        end
-        function R = do_make_R(this, opts)
-            %% R ~ cerebral metabolic rate ~ \mu mol/min/hg
-            
-            arguments
-                this mlkinetics.OxyMetabKit
-                opts.E mlfourd.ImagingContext2
-                opts.cbf mlfourd.ImagingContext2
-                opts.content double
-            end
 
-            R = opts.E.*opts.cbf*opts.content;
-            R.filepath = E.filepath;
-            R.fileprefix = "";
+            E = this.do_make_oef(varargin{:});
+        end
+        function Ri = do_make_Ri(this, varargin)
+            %% Ri ~ cerebral metabolic rate ~ \mu mol/min/hg
+            
+           Ri = this.do_make_cmro2(varargin{:});
         end
 
         function v1 = do_make_v1(this, varargin)
@@ -123,10 +97,6 @@ classdef (Sealed) OxyMetabKit < handle & mlkinetics.KineticsKit
         function BP = do_make_BP(this, varargin)
             %% BP ~ binding potential
             BP = nan;
-        end
-        function ga = do_make_ga(this, varargin)
-            %% ga ~ graphical analysis results ~ struct
-            ga = struct([]);
         end
     end
 
