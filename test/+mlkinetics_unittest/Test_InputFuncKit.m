@@ -68,7 +68,7 @@ classdef Test_InputFuncKit < matlab.unittest.TestCase
                     counter_tags="caprac");
                 sk = ScannerKit.create( ...
                     bids_kit=bk, tracer_kit=tk, scanner_tags="vision");
-                ic = sk.do_make_activity_density(decayCorrected=false);
+                ic = sk.do_make_activity_density();
                 ic.filepath = derivs;
                 ic.save();
                 popd(pwd0);
@@ -192,6 +192,8 @@ classdef Test_InputFuncKit < matlab.unittest.TestCase
             ifk.do_make_plot();
         end
         function test_mipidif_kit_do_make_input_func(this)
+            %% alls builders of mlaif.MipIdif to create input function
+
             bids_fqfn = fullfile(getenv("SINGULARITY_HOME"), ...
                 "CCIR_01211", "sourcedata", "sub-108293", 'ses-20210421152358', "pet", ...
                 "sub-108293_ses-20210421152358_trc-ho_proc-BrainMoCo2-createNiftiMovingAvgFrames.nii.gz");
@@ -227,7 +229,7 @@ classdef Test_InputFuncKit < matlab.unittest.TestCase
             toc
 
             tic
-            ic_mipidif = ifk.do_make_input_func(steps=logical([1 1 1 1]));
+            ic_mipidif = ifk.do_make_input_func(steps=logical([0 0 0 1]));
             toc
 
             tic
@@ -293,7 +295,7 @@ classdef Test_InputFuncKit < matlab.unittest.TestCase
                 "sub-108293_ses-20210421152358_trc-ho_proc-BrainMoCo2-createNiftiMovingAvgFrames.nii.gz");
             med = mlvg.Ccir1211Mediator(bids_fqfn);
             j = med.json_metadata;
-            this.verifyEqual(j.start_times, 0:109)
+            this.verifyEqual(j.starts, 0:109)
             this.verifyEqual(j.taus, 10*ones(1, 110))
             this.verifyEqual(j.times, 0:109)
             this.verifyEqual(j.timesMid, 5:114)
@@ -305,7 +307,7 @@ classdef Test_InputFuncKit < matlab.unittest.TestCase
             med1 = mlvg.Ccir1211Mediator(bids_fqfn);
             j1 = med1.json_metadata;
             taus1 = j1.taus;
-            this.verifyEqual(j1.start_times, cumsum(taus1) - taus1)
+            this.verifyEqual(j1.starts, cumsum(taus1) - taus1)
             this.verifyEqual(j1.taus, taus1)
             this.verifyEqual(j1.times, cumsum(taus1) - taus1)
             this.verifyEqual(j1.timesMid, cumsum(taus1) - taus1/2)
