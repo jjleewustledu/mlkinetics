@@ -12,17 +12,41 @@ classdef (Abstract) ScannerKit < handle & mlsystem.IHandle
     end
 
     properties (Dependent)
-        decayCorrected % false for 15O
+        decayCorrected
+        noclobber % minimize writing large NIfTI to filesystem
     end
 
-    methods %% GET
+    methods %% GET, SET
         function g = get.decayCorrected(this)
-            rn = this.tracer_kit_.make_radionuclides();
-            g = ~strcmpi(rn.isotope, "15O");
+            if isempty(this.device_)
+                this.do_make_device();
+            end
+            g = this.device_.decayCorrected;
+        end
+        function g = get.noclobber(this)
+            g = this.noclobber_;
+        end
+        function     set.noclobber(this, s)
+            assert(islogical(s))
+            this.noclobber_ = s;
         end
     end
 
     methods
+        function this = decayCorrect(this)
+            if isempty(this.device_)
+                this.do_make_device();
+            end
+            decayCorrect(this.device_);
+            this.imaging_context_ = [];
+        end
+        function this = decayUncorrect(this)
+            if isempty(this.device_)
+                this.do_make_device();
+            end
+            decayUncorrect(this.device_);
+            this.imaging_context_ = [];
+        end
 
         %% make related products, with specialty relationships specified by the factory
 

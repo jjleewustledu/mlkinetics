@@ -65,11 +65,11 @@ classdef (Sealed) ModelKit < handle & mlsystem.IHandle
                 mdl = this.install_model(copts{:});
             end
         end
-        function sol = make_solution(this, varargin)
+        function soln = make_solution(this, varargin)
             %% makes a parameterized model and solves it
 
             mdl = this.make_model(varargin{:});
-            sol = mdl.make_solution();
+            soln = mdl.build_solution();
         end
         function h = plot(this, tag, varargin)
             h = plot(this.proto_registry_(tag), varargin{:});
@@ -155,10 +155,16 @@ classdef (Sealed) ModelKit < handle & mlsystem.IHandle
                 opts.data struct = struct([])
                 opts.model_tags {mustBeTextScalar}
             end
-            copts = namedargs2cell(opts);
 
             mdl = [];
+
+            %% decay-uncorrected models
+            
             if any(contains(opts.model_tags, "martin1987", IgnoreCase=true))
+                opts.scanner_kit.decayUncorrect();
+                opts.input_func_kit.decayUncorrect();
+                save(opts.input_func_kit);
+                copts = namedargs2cell(opts);
                 if any(contains(opts.model_tags, "quadratic", IgnoreCase=true))
                     mdl = mlkinetics.QuadraticMartin1987Model.create(copts{:});
                 else
@@ -166,6 +172,10 @@ classdef (Sealed) ModelKit < handle & mlsystem.IHandle
                 end
             end
             if any(contains(opts.model_tags, "mintun1984", IgnoreCase=true))
+                opts.scanner_kit.decayUncorrect();
+                opts.input_func_kit.decayUncorrect();
+                save(opts.input_func_kit);
+                copts = namedargs2cell(opts);
                 if any(contains(opts.model_tags, "quadratic", IgnoreCase=true))
                     mdl = mlkinetics.QuadraticMintun1984Model.create(copts{:});
                 else
@@ -173,31 +183,66 @@ classdef (Sealed) ModelKit < handle & mlsystem.IHandle
                 end
             end
             if any(contains(opts.model_tags, "raichle1983", IgnoreCase=true))
+                opts.scanner_kit.decayUncorrect();
+                opts.input_func_kit.decayUncorrect();
+                save(opts.input_func_kit);
+                copts = namedargs2cell(opts);
                 if any(contains(opts.model_tags, "quadratic", IgnoreCase=true))
                     mdl = mlkinetics.QuadraticRaichle1983Model.create(copts{:});
                 else
                     mdl = mlkinetics.Raichle1983Model.create(copts{:});
                 end
             end
+
+            %% decay-corrected models
+
             if any(contains(opts.model_tags, "huang1980", IgnoreCase=true))
+                opts.scanner_kit.decayCorrect();
+                opts.input_func_kit.decayCorrect();
+                save(opts.input_func_kit);
+                copts = namedargs2cell(opts);
                 mdl = mlkinetics.Huang1980Model.create(copts{:});
             end
             if any(contains(opts.model_tags, "2tcm", IgnoreCase=true))
+                opts.scanner_kit.decayCorrect();
+                opts.input_func_kit.decayCorrect();
+                save(opts.input_func_kit);
+                copts = namedargs2cell(opts);
                 mdl = mlkinetics.TwoTCModel.create(copts{:});
             end
             if any(contains(opts.model_tags, "ichise2002", IgnoreCase=true))
+                opts.scanner_kit.decayCorrect();
+                opts.input_func_kit.decayCorrect();
+                save(opts.input_func_kit);
+                copts = namedargs2cell(opts);
                 mdl = mlkinetics.Ichise2002Model.create(copts{:});
             end
             if any(contains(opts.model_tags, "logan1990", IgnoreCase=true))
+                opts.scanner_kit.decayCorrect();
+                opts.input_func_kit.decayCorrect();
+                save(opts.input_func_kit);
+                copts = namedargs2cell(opts);
                 mdl = mlkinetics.Logan1990Model.create(copts{:});
             end
             if any(contains(opts.model_tags, "logan1996", IgnoreCase=true))
+                opts.scanner_kit.decayCorrect();
+                opts.input_func_kit.decayCorrect();
+                save(opts.input_func_kit);
+                copts = namedargs2cell(opts);
                 mdl = mlkinetics.Logan1996Model.create(copts{:});
             end
             if any(contains(opts.model_tags, "ichise2003", IgnoreCase=true))
+                opts.scanner_kit.decayCorrect();
+                opts.input_func_kit.decayCorrect();
+                save(opts.input_func_kit);
+                copts = namedargs2cell(opts);
                 mdl = mlkinetics.Ichise2003Model.create(copts{:});
             end
             if any(contains(opts.model_tags, "wu2002", IgnoreCase=true))
+                opts.scanner_kit.decayCorrect();
+                opts.input_func_kit.decayCorrect();
+                save(opts.input_func_kit);
+                copts = namedargs2cell(opts);
                 mdl = mlkinetics.Wu2002Model.create(copts{:});
             end
             if isempty(mdl)
