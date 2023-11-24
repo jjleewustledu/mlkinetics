@@ -11,16 +11,18 @@ classdef NiftiInputFuncKit < handle & mlkinetics.IdifKit
             ic_ = do_make_activity_density(this);
             vox_vol = prod(ic_.mmppix)/1000; % mm^3 ~ \mu L
             ic = ic_*vox_vol;
-            ic = ic*this.recovery_coeff;
         end
         function ic = do_make_activity_density(this)
             %% Bq/mL
 
-            ic = copy(this.input_func_ic_);
-            ic = ic*this.recovery_coeff;
+            ic = this.do_make_input_func();
         end
         function dev = do_make_device(this)
             dev = this.scanner_kit_.do_make_device();
+        end
+
+        function idif_ic = do_make_input_func(this)        
+            idif_ic = copy(this.input_func_ic_);
         end
     end
 
@@ -46,6 +48,7 @@ classdef NiftiInputFuncKit < handle & mlkinetics.IdifKit
             if ~isemptytext(this.input_func_fqfn_)
                 this.input_func_ic_ = mlfourd.ImagingContext2(this.input_func_fqfn_);
             end
+            this.decayCorrected_ = true; % typical of dynamic scanner data
         end
     end
 
