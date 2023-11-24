@@ -21,15 +21,15 @@ classdef QuadraticMartin1987Model < handle & mlkinetics.QuadraticModel
     end
 
     methods
-        function soln = make_solution(this)
+        function soln = build_solution(this)
 
             % check dynamic imaging
 
             % check & adjust input functions, esp. their timings and timing boundaries, 
             % to match dynamic imaging 
 
-            obsPet = this.obsFromTac(this.measurement_, t0=this.t0_, tF=this.tF_);
-            integralAif = trapz(this.artery_interpolated_(this.t0_+1:this.tF_+1));
+            obsPet = this.obsFromTac(this.measurement_, t0=this.t0, tF=this.tF);
+            integralAif = trapz(this.artery_interpolated_(this.t0+1:this.tF+1));
             c1 = mlkinetics.OxyMetabConversion.RATIO_SMALL_LARGE_HCT;
             c2 = mlkinetics.OxyMetabConversion.DENSITY_BRAIN;
             img = obsPet/(c1*c2*integralAif);
@@ -57,13 +57,7 @@ classdef QuadraticMartin1987Model < handle & mlkinetics.QuadraticModel
 
             this = mlkinetics.QuadraticMartin1987Model(varargin{:});
             
-            [this.measurement_,this.timesMid_,t0,this.artery_interpolated_] = this.mixTacAif( ...
-                this.scanner_kit_, ...
-                scanner_kit=this.scanner_kit_, ...
-                input_func_kit=this.input_func_kit_, ...
-                roi=this.dlicv_ic);
-            this.t0_ = t0 + this.timeStar;
-            this.tF_ = min(t0 + this.tauObs, this.timeCliff);
+            [this.measurement_,this.times_sampled_,this.t0_,this.artery_interpolated_] = this.mixTacAif();
         end
     end
 
