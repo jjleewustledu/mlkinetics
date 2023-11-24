@@ -22,7 +22,7 @@ classdef (Sealed) OxyMetabKit < handle & mlkinetics.KineticsKit
             %% cbv ~ blood volume ~ mL/hg
             mdl = this.model_kit_.make_model(varargin{:});
             if isa(mdl, "mlkinetics.QuadraticModel")
-                cbv = mdl.make_solution();
+                cbv = mdl.build_solution();
                 return
             end
             v1 = this.do_make_v1(varargin{:});
@@ -32,7 +32,7 @@ classdef (Sealed) OxyMetabKit < handle & mlkinetics.KineticsKit
             %% cbf ~ blood flow ~ mL/min/hg
             mdl = this.model_kit_.make_model(varargin{:});
             if isa(mdl, "mlkinetics.QuadraticModel")
-                cbf = mdl.make_solution();
+                cbf = mdl.build_solution();
                 return
             end
             cbf = this.do_make_K1(varargin{:});
@@ -103,7 +103,7 @@ classdef (Sealed) OxyMetabKit < handle & mlkinetics.KineticsKit
     methods (Static)
         function this = instance(varargin)
             persistent uniqueInstance
-            if isempty(uniqueInstance)
+            if isempty(uniqueInstance) 
                 this = mlkinetics.OxyMetabKit();
                 this.install_kinetics(varargin{:});
                 uniqueInstance = this;

@@ -5,12 +5,28 @@ classdef (Abstract) Parc < handle & mlsystem.IHandle
     %  Created 09-Oct-2023 22:01:23 by jjlee in repository /Users/jjlee/MATLAB-Drive/mlkinetics/src/+mlkinetics.
     %  Developed on Matlab 23.2.0.2380103 (R2023b) Update 1 for MACI64.  Copyright 2023 John J. Lee.
     
+    methods (Abstract)
+        reshape_from_parc(this, ic1)
+        reshape_to_parc(this, ic)
+    end
+
     methods (Abstract, Static)
         create()
     end
 
     %% Shared Implementations
 
+    properties (Dependent)
+        dlicv_ic
+    end
+
+    methods %% GET
+        function g = get.dlicv_ic(this)
+            med = this.bids_kit_.make_bids_med();
+            g = med.dlicv_ic;
+        end
+    end
+    
     methods
         function this = initialize(this, opts)
             arguments

@@ -23,12 +23,6 @@ classdef (Sealed) ParcKit < handle & mlsystem.IHandle
             ld = load(varargin{:});
             this = ld.this;
         end
-        function a = make_activity(this)
-        end
-        function a = make_activity_density(this)
-        end
-        function ic = make_imaging(this)
-        end
         function parc = make_parc(this, opts)
             arguments
                 this mlkinetics.ParcKit
@@ -61,7 +55,7 @@ classdef (Sealed) ParcKit < handle & mlsystem.IHandle
         function this = create(opts)
             arguments
                 opts.bids_kit mlkinetics.BidsKit {mustBeNonempty}
-                opts.representation_kit mlkinetics.RepresentationKit {mustBeNonempty}
+                opts.representation_kit = []
                 opts.parc_tags {mustBeText}
             end
 
@@ -97,7 +91,7 @@ classdef (Sealed) ParcKit < handle & mlsystem.IHandle
             arguments
                 this mlkinetics.ParcKit
                 opts.bids_kit mlkinetics.BidsKit {mustBeNonempty}
-                opts.representation_kit mlkinetics.RepresentationKit {mustBeNonempty}
+                opts.representation_kit = []
                 opts.parc_tags {mustBeText}
             end
 
@@ -105,17 +99,20 @@ classdef (Sealed) ParcKit < handle & mlsystem.IHandle
             if contains(opts.parc_tags, "schaeffer", IgnoreCase=true)
                 parc = mlkinetics.SchaefferParc.create( ...
                     bids_kit=opts.bids_kit, ...
-                    representation_kit=opts.representation_kit);
+                    representation_kit=opts.representation_kit, ...
+                    parc_tags=opts.parc_tags);
             end
             if contains(opts.parc_tags, "wmparc", IgnoreCase=true)
-                parc = mlkinetics.WmparcParc.create( ...
+                parc = mlkinetics.ParcWmparc.create( ...
                     bids_kit=opts.bids_kit, ...
-                    representation_kit=opts.representation_kit);
+                    representation_kit=opts.representation_kit, ...
+                    parc_tags=opts.parc_tags);
             end
             if contains(opts.parc_tags, "voxel", IgnoreCase=true)
-                parc = mlkinetics.VoxelParc.create( ...
+                parc = mlkinetics.ParcVoxel.create( ...
                     bids_kit=opts.bids_kit, ...
-                    representation_kit=opts.representation_kit);
+                    representation_kit=opts.representation_kit, ...
+                    parc_tags=opts.parc_tags);
             end
             if isempty(parc)
                 error("mlkinetics:ValueError", ...
