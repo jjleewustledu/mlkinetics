@@ -121,6 +121,7 @@ classdef (Abstract) KineticsKit < handle & mlsystem.IHandle
                 opts.scanner_tags {mustBeText}
                 opts.input_func_tags {mustBeText}
                 opts.input_func_fqfn {mustBeText}
+                opts.recovery_coeff double = 1
                 opts.representation_tags {mustBeText}
                 opts.parc_tags {mustBeText}
                 opts.data struct = struct([])
@@ -222,6 +223,7 @@ classdef (Abstract) KineticsKit < handle & mlsystem.IHandle
                 opts.parc_tags {mustBeText} = "voxels"
                 opts.data struct = struct([])
                 opts.model_tags {mustBeText} = ""
+                opts.recovery_coeff double = 1
             end
 
             % BidsKit
@@ -263,7 +265,8 @@ classdef (Abstract) KineticsKit < handle & mlsystem.IHandle
                 tracer_kit=this.tracer_kit_, ...
                 scanner_kit=this.scanner_kit_, ...
                 input_func_tags=opts.input_func_tags, ...
-                input_func_fqfn=opts.input_func_fqfn);        
+                input_func_fqfn=opts.input_func_fqfn, ...
+                recovery_coeff=opts.recovery_coeff);        
 
             % RepresentationKit
             % this.representation_kit_ = mlkinetics.RepresentationKit.create( ...
