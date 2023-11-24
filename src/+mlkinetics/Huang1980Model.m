@@ -194,15 +194,13 @@ classdef (Sealed) Huang1980Model < handle & mlkinetics.TCModel
     methods (Static)
         function this = create(varargin)
             this = mlkinetics.Huang1980Model(varargin{:});
+
             this.LENK = 5;
-            this.mgdL_to_mmolL = 0.0555;            
-            [this.measurement_,this.timesMid_,t0,this.artery_interpolated_] = this.mixTacAif( ...
-                this.scanner_kit_, ...
-                scanner_kit=this.scanner_kit_, ...
-                input_func_kit=this.input_func_kit_, ...
-                roi=this.dlicv_ic);
-            this.t0_ = t0;
-            this.tF_ = min(t0 + this.tauObs, this.timeCliff);
+            this.mgdL_to_mmolL = 0.0555;
+            [this.measurement_,this.times_sampled_,this.t0_,this.artery_interpolated_] = this.mixTacAif();
+
+            assert(isfield(this.data_, "cbv"), ...
+                "%s: data_ is missing cbv", stackstr())
 
             % apply kinetics assumptions
             this.buildParcellation();

@@ -6,7 +6,7 @@ classdef (Sealed) TwoTCModel < handle & mlkinetics.TCModel
     %  Developed on Matlab 23.2.0.2380103 (R2023b) Update 1 for MACI64.  Copyright 2023 John J. Lee.
     
     methods
-        function mdl = buildModel(this, opts)
+        function this = build_model(this, opts)
             arguments
                 this mlkinetics.TwoTCModel
                 opts.solver_tags = "simulanneal"
@@ -16,24 +16,12 @@ classdef (Sealed) TwoTCModel < handle & mlkinetics.TCModel
                 opts.artery_interpolated double = []
             end
 
-            mdl = struct( ...
-                'trc', tac_, ...
-                'solver', 'simulanneal', ...
-                'devkit', ipr.devkit, ...
-                'times_sampled', timesMid_, ...
-                'artery_interpolated', aif_, ...
-                'fileprefix', fp);
-
             if contains(opts.solver_tags, "simulanneal")
                 this.solver_ = mlkinetics.TwoTCSimulAnneal(context=this);
             end
             if contains(opts.solver_tags, "multinext")
                 this.solver_ = mlkinetics.TwoTCMultiNest(context=this);
             end
-        end
-        function buildParcellation(this)
-        end
-        function buildSolved(this)
         end
         function c = chi(this, varargin)
             %  @return 1/s
@@ -68,18 +56,12 @@ classdef (Sealed) TwoTCModel < handle & mlkinetics.TCModel
     methods (Static)
         function this = create(varargin)
             this = mlkinetics.TwoTCModel(varargin{:});
-            this.LENK = 4;
+            this.LENK = 5;
             this.mgdL_to_mmolL = nan;
-            [this.measurement_,this.timesMid_,t0,this.artery_interpolated_] = this.mixTacAif( ...
-                this.scanner_kit_, ...
-                scanner_kit=this.scanner_kit_, ...
-                input_func_kit=this.input_func_kit_, ...
-                roi=this.dlicv_ic);
-            this.t0_ = t0;
-            this.tF_ = min(t0 + this.tauObs, this.timeCliff);
+            [this.measurement_,this.times_sampled_,this.t0_,this.artery_interpolated_] = this.mixTacAif();
 
             % apply kinetics assumptions
-            this = buildModel(this);
+            this = build_model(this);
         end
 
         %% builder methods for model
@@ -149,42 +131,6 @@ classdef (Sealed) TwoTCModel < handle & mlkinetics.TCModel
             q3 = (k3 * k1 / bminusa) * conv3;
             qs = v1 * (artery_interpolated1 + scale * (q2 + q3)); 
             qs = qs(tBuffer+1:n);
-        end
-
-        %% UTILITIES
-
-        function g = trcMassConversion(g, unitsIn, unitsOut)
-            %  @param required g is numeric
-            %  @param required unitsIn, unitsOut in {'mg/dL' 'mmol/L' 'umol/hg'}
-            
-            assert(isnumeric(g))
-            assert(ischar(unitsIn))
-            assert(ischar(unitsOut))
-            if strcmp(unitsIn, unitsOut)
-                return
-            end
-            
-            switch unitsIn % to SI
-                case 'mg/dL'
-                    g = g * this.mgdL_to_mmolL;
-                case 'mmol/L'
-                case 'umol/hg'
-                    % [mmol/L] == [umol/hg] [mmol/umol] [hg/g] [g/mL] [mL/L] 
-                    g = g * 1e-3 * 1e-2 * 1.05 * 1e3;
-                otherwise
-                    error('mlglucose:ValueError', 'Huang1980.gclConversion')
-            end
-            
-            switch unitsOut % SI to desired
-                case 'mg/dL'
-                    g = g / this.mgdL_to_mmolL;
-                case 'mmol/L'
-                case 'umol/hg'
-                    % [umol/hg] == [mmol/L] [umol/mmol] [L/mL] [mL/g] [g/hg] 
-                    g = g * 1e3 * 1e-3 * (1/1.05) * 1e2;
-                otherwise
-                    error('mlglucose:ValueError', 'Huang1980.gclConversion')
-            end
         end
     end
 

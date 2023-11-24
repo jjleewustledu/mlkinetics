@@ -9,8 +9,25 @@ classdef Mintun1984Model < handle & mlkinetics.Model
 
     methods (Static)
         function this = create(varargin)
+            this = mlkinetics.Mintun1984Model(varargin{:});     
 
-            this = mlkinetics.Mintun1984Model(varargin{:});
+            this.LENK = 5;
+            [this.measurement_,this.times_sampled_,this.t0_,this.artery_interpolated_] = this.mixTacAif();
+
+            assert(isfield(this.data_, "raichleks"), ...
+                "%s: data_ is missing raichleks", stackstr())
+            assert(isfield(this.data_, "martinv1"), ...
+                "%s: data_ is missing martinv1", stackstr())
+
+            % apply kinetics assumptions
+            try
+                j = this.product.json_metadata;
+                this.set_times_sampled(j.timesMid);
+                this.set_artery_interpolated(this.artery_interpolated_);
+            catch ME
+                handwarning(ME)
+            end
+        end
             
             [this.measurement_,this.timesMid_,t0,this.artery_interpolated_] = this.mixTacAif( ...
                 this.scanner_kit_, ...

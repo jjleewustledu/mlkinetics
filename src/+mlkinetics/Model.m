@@ -17,30 +17,62 @@ classdef (Abstract) Model < handle & mlsystem.IHandle
     %% Shared Implementations
 
     properties (Dependent)
+        bids_med
         data % ancillary data used by model
         dlicv_ic % coregistered to dynamic PET
         input_func
+        mgdL_to_mmolL % [mg/dL] * mgdL_to_mmolL -> [mmol/L]
         model
-        product % intermediate and final products
+        parc
+        product % intermediate from ScannerKit.do_make_activity_density(); final product
+        tF
+        unique_indices
+
+        %% lazy initialization by mixTacAif()
+        measurement % numeric representation expected by solvers
+        times_sampled
+        t0
+        artery_interpolated
+        Dt
+        datetimePeak
     end
 
     methods %% GET
+        function g = get.artery_interpolated(this)
+            if ~isempty(this.artery_interpolated_)
+                g = this.artery_interpolated_;
+                return
+            end
+            [~,~,~,g] = mixTacAif(this);
+        end
+        function g = get.bids_med(this)
+            if ~isempty(this.bids_med_)
+                g = this.bids_med_;
+                return
+            end
+
+            this.bids_med_ = this.bids_kit_.make_bids_med();
+            g = this.bids_med_;
+        end
         function g = get.data(this)
             g = this.data_;
         end
-        function g = get.dlicv_ic(this)
-            if ~isempty(this.dlicv_ic_)
-                g = copy(this.dlicv_ic_);
+        function g = get.datetimePeak(this)
+            if ~isempty(this.datetimePeak_)
+                g = this.datetimePeak_;
                 return
             end
-            %parc = this.parc_kit_.make_parc();
-            %this.dlicv_ic_ = parc.dlicv_on_target(this.co_ic);
-            med = this.bids_kit_.make_bids_med();
-            this.dlicv_ic_ = med.dlicv_ic;
-            if isempty(this.dlicv_ic_)
-                g = this.dlicv_ic_;
+            [~,~,~,~,~,g] = mixTacAif(this);
+        end
+        function g = get.dlicv_ic(this)
+            g = this.parc.dlicv_ic;
+        end
+        function g = get.Dt(this)
+            if ~isempty(this.Dt_)
+                g = this.Dt_;
+                return
             end
-            g = copy(this.dlicv_ic_);
+            [~,~,~,~,g] = mixTacAif(this);
         end
         function g = get.input_func(this)
             if ~isempty(this.input_func_)
@@ -50,11 +82,66 @@ classdef (Abstract) Model < handle & mlsystem.IHandle
             this.input_func_ = this.input_func_kit_.do_make_activity_density();
             g = this.input_func_;
         end
+        function g = get.measurement(this)
+            if ~isempty(this.measurement_)
+                g = this.measurement_;
+                return
+            end
+            g = mixTacAif(this);
+        end
+        function g = get.mgdL_to_mmolL(this)
+            if isfield(this.data, "mgdL_to_mmolL")
+                g = this.data.this.mgdL_to_mmolL_;
+                return
+            end
+            if isfield(this.data, "molecular_weight")
+                g = 10/this.data.molecular_weight;
+                return
+            end
+            g = nan;
+        end
         function g = get.model(this)
             g = this;
         end
+        function g = get.parc(this)
+            if ~isempty(this.parc_)
+                g = this.parc_;
+                return
+            end
+
+            this.parc_ = this.parc_kit_.make_parc();
+            g = this.parc_;
+        end
         function g = get.product(this)
+            if ~isempty(this.product_)
+                g = copy(this.product_);
+                return
+            end
+
+            % lazy init from ScannerKit
+            this.product_ = this.scanner_kit_.do_make_activity_density();
             g = this.product_;
+        end
+        function g = get.unique_indices(this)
+            g = this.parc.unique_indices;
+        end
+        function g = get.t0(this)
+            if ~isempty(this.t0_)
+                g = this.t0_ + this.timeStar();
+                return
+            end
+            [~,~,g] = mixTacAif(this);
+            g = g + this.timeStar();
+        end
+        function g = get.tF(this)
+            g = min(this.t0 + this.tauObs(), this.timeCliff());
+        end
+        function g = get.times_sampled(this)
+            if ~isempty(this.times_sampled_)
+                g = this.times_sampled_;
+                return
+            end
+            [~,g] = mixTacAif(this);
         end
     end
 
@@ -81,8 +168,6 @@ classdef (Abstract) Model < handle & mlsystem.IHandle
 
         %% UTILITIES
 
-        function [measurement,timesMid,t0,artery_interpolated,Dt,datetimePeak] = mixTacAif(this)
-            %% adapts kinetic models to legacy mixture methods enumerated in mlkinetics.ScannerKit
 
             arguments
                 this mlkinetics.Model                
@@ -112,18 +197,31 @@ classdef (Abstract) Model < handle & mlsystem.IHandle
                     measurement = ad_sk.imagingFormat.img;
                     ad_ifk = this.input_func_kit_.do_make_activity_density();
                     j = ad_ifk.json_metadata;
-                    timesMid = j.timesMid;
+                    times_sampled = j.timesMid;
                     t0 = 0;
                     artery = asrow(ad_ifk.imagingFormat.img);
-                    tau = timesMid(end) - timesMid(end-1);
-                    artery_interpolated = interp1(timesMid, artery, 0:timesMid(end)+tau/2);
+                    tauF = times_sampled(end) - times_sampled(end-1);
+                    artery_interpolated = interp1(times_sampled, artery, 0:times_sampled(end)+tauF/2);
+                    artery_interpolated(isnan(artery_interpolated)) = 0;
                     Dt = 0;
                     [~,idxPeak] = max(artery_interpolated);
                     dev = this.scanner_kit_.do_make_device();
                     datetimePeak = dev.datetime0 + seconds(idxPeak-1);                    
                 otherwise
                     error("mlkinetics:ValueError", "%s: unknown class %s", ...
-                        stackstr(), class(this.input_func_kit))
+                        stackstr(), class(this.input_func_kit_))
+            end
+
+            this.measurement_ = measurement;
+            this.times_sampled_ = times_sampled;
+            this.t0_ = t0;
+            this.artery_interpolated_ = artery_interpolated;
+            this.Dt_ = Dt;
+            this.datetimePeak_ = datetimePeak;
+
+            fprintf(stackstr()+":")
+            toc
+        end
             end
         end
         function t = tauObs(~)    
@@ -188,15 +286,18 @@ classdef (Abstract) Model < handle & mlsystem.IHandle
         scanner_kit_
         tracer_kit_
 
-        artery_interpolated_
-        dlicv_ic_
-        input_func_ % 
-        measurement_
+        artery_interpolated_ % see also mixTacAif()
+        bids_med_
+        datetimePeak_ % see also mixTacAif()
+        Dt_ % see also mixTacAif()
+        input_func_ 
+        measurement_ % see also mixTacAif()
+        model_tags_
+        parc_
         product_
-        solver_ % 
-        t0_
-        timesMid_
-        tF_
+        solver_ 
+        t0_ % see also mixTacAif()
+        times_sampled_ % see also mixTacAif()
     end
 
     methods (Access = protected)
@@ -226,6 +327,46 @@ classdef (Abstract) Model < handle & mlsystem.IHandle
             end
             copts = namedargs2cell(opts);
             this.initialize(copts{:});
+        end
+    end
+
+    %% HIDDEN
+
+    methods (Hidden)
+
+        %% legacy support for mlpet.TracerKineticsModel
+        
+        function set_times_sampled(this, s)
+            if isempty(s)
+                return
+            end
+            this.times_sampled_ = asrow(s);
+        end
+        function set_artery_interpolated(this, s)
+            if isempty(s)
+                return
+            end            
+            
+            assert(~isempty(this.times_sampled))
+            s = double(s); % ImagingContext2 -> double
+
+            % immediate match
+            if length(s) == length(this.times_sampled)
+                this.artery_interpolated_ = asrow(s);
+                return
+            end
+
+            % artery_interpolated_ may be shorter than scanner times_sampled
+            tBuffer = 0;
+            if length(s) < floor(this.times_sampled(end)) + tBuffer + 1
+                this.artery_interpolated_ = asrow( ...
+                    interp1(-tBuffer:(length(s)-tBuffer-1), s, -tBuffer:this.times_sampled(end), ...
+                    'linear', 0));
+                return
+            end
+            
+            % best remaining guess
+            this.artery_interpolated_ = asrow(s);
         end
     end
     

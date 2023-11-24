@@ -44,19 +44,7 @@ classdef Martin1987Model < handle & mlkinetics.Model
         function this = create(varargin)
             this = mlkinetics.Martin1987Model(varargin{:});
 
-            this.bids_med_ = this.bids_kit_.make_bids_med();
-
-            [tac_,timesMid_,t0_,aif_] = this.mixTacAif( ...
-                this.scanner_kit_, ...
-                scanner=this.scanner_kit_.do_make_device(), ...
-                arterial=this.input_func_kit_.do_make_device(), ...
-                roi=this.dlicv_ic);
-            fp = sprintf("%s_dt%s", stackstr(), datetime("now", InputFormat="yyyymmddHHMMSS")); 
-
-            this.representation_ = mloxygen.DispersedMartin1987Model(varargin{:});
-            this.measurement_ = tac_;
-            this.solver_ = mloxygen.DispersedMartin1987Solver( ...
-                'context', this, varargin{:});
+            [this.measurement_,this.times_sampled_,this.t0_,this.artery_interpolated_] = this.mixTacAif();
         end
     end
 

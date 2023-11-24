@@ -58,6 +58,19 @@ classdef Raichle1983Model < handle & mlkinetics.Model
     methods (Static)
         function this = create(varargin)
             this = mlkinetics.Raichle1983Model(varargin{:});
+
+            this.LENK = 4;
+            [this.measurement_,this.times_sampled_,this.t0_,this.artery_interpolated_] = this.mixTacAif();
+
+            % apply kinetics assumptions
+            try
+                j = this.product.json_metadata;
+                this.set_times_sampled(j.timesMid);
+                this.set_artery_interpolated(this.artery_interpolated_);
+            catch ME
+                handwarning(ME)
+            end
+        end
         end
     end
 
