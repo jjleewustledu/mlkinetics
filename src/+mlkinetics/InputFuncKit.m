@@ -6,6 +6,10 @@ classdef (Abstract) InputFuncKit < handle & mlsystem.IHandle
     %  Created 02-May-2023 14:24:08 by jjlee in repository /Users/jjlee/MATLAB-Drive/mlkinetics/src/+mlkinetics.
     %  Developed on Matlab 9.14.0.2239454 (R2023a) Update 1 for MACI64.  Copyright 2023 John J. Lee.
 
+    properties (Abstract)
+        decayCorrected
+    end
+
     methods (Abstract)
 
         %% make related products, with specialty relationships specified by the factory
@@ -18,20 +22,34 @@ classdef (Abstract) InputFuncKit < handle & mlsystem.IHandle
 
     properties (Dependent)
         recovery_coeff % multiplies input function
-        decayCorrected % false for 15O
     end
 
     methods %% GET
-        function g = get.decayCorrected(this)
-            rn = this.tracer_kit_.make_radionuclides();
-            g = ~strcmpi(rn.isotope, "15O");
-        end
         function g = get.recovery_coeff(this)
             g = this.recovery_coeff_;
         end
     end
 
     methods
+        function decayCorrect(this)
+            %if ~isempty(this.input_func_ic_)
+            %    error("mlkinetics:NotImplementedError", "InputFuncKit.decayCorrect")
+            %end
+            if isempty(this.device_)
+                do_make_device(this);
+            end
+            decayCorrect(this.device_);
+        end
+        function decayUncorrect(this)
+            %if ~isempty(this.input_func_ic_)
+            %    error("mlkinetics:NotImplementedError", "InputFuncKit.decayUncorrect")
+            %end
+            if isempty(this.device_)
+                do_make_device(this);
+            end
+            decayUncorrect(this.device_);
+        end
+        
         function h = do_make_plot(this)
             h = figure;
             img = asrow(this.input_func_ic_.imagingFormat.img);
