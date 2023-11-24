@@ -138,16 +138,16 @@ classdef (Sealed) BidsKit < handle & mlsystem.IHandle
             end
 
             med = [];
-            if contains(opts.bids_tags, "ccir1211", IgnoreCase=true)
+            if contains(opts.bids_tags, "ccir", IgnoreCase=true) && contains(opts.bids_tags, "1211")
                 med = mlvg.Ccir1211Mediator(opts.bids_fqfn);
             end
-            if contains(opts.bids_tags, "ccir1351", IgnoreCase=true)
+            if contains(opts.bids_tags, "ccir", IgnoreCase=true) && contains(opts.bids_tags, "1351")
                 med = mlwong.Ccir1351Mediator(opts.bids_fqfn);
             end
-            if contains(opts.bids_tags, "ccir993", IgnoreCase=true)
+            if contains(opts.bids_tags, "ccir", IgnoreCase=true) && contains(opts.bids_tags, "993")
                 med = mlan.Ccir993Mediator(opts.bids_fqfn);
             end
-            if contains(opts.bids_tags, "ccir559754", IgnoreCase=true)
+            if contains(opts.bids_tags, "ccir", IgnoreCase=true) && contains(opts.bids_tags, "559754")
                 med = mlraichle.Ccir559754Mediator(opts.bids_fqfn);
             end
             if contains(opts.bids_tags, "simple", IgnoreCase=true)
@@ -159,7 +159,7 @@ classdef (Sealed) BidsKit < handle & mlsystem.IHandle
             end
 
             % store
-            this.proto_registry_(opts.bids_tags) = copy(med);
+            this.proto_registry_(opts.bids_tags) = med;
         end
     end
     
