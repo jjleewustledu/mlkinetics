@@ -68,6 +68,20 @@ classdef (Abstract) InputFuncKit < handle & mlsystem.IHandle
             fontsize(gcf, scale=1.2)
             saveFigure2(h, this.input_func_ic_.fqfp, closeFigure=false)
         end
+        function save(this)
+            if isempty(this.input_func_ic_)
+                this.do_make_activity_density()
+            end
+            assert(~isempty(this.input_func_ic_))
+            this.input_func_ic_.save();
+        end
+        function saveas(this, varargin)
+            if isempty(this.input_func_ic_)
+                this.do_make_activity_density()
+            end
+            assert(~isempty(this.input_func_ic_))
+            this.input_func_ic_.saveas(varargin{:});
+        end
     end
     
     methods (Static)
@@ -112,7 +126,7 @@ classdef (Abstract) InputFuncKit < handle & mlsystem.IHandle
             if any(contains(opts.input_func_tags, ["nifti","imaging_format","imaging_context"], IgnoreCase=true))
                 this = mlkinetics.NiftiInputFuncKit.instance(copts{:});
                 return
-            end
+            end            
         end
         function ic = estimate_recovery_coeff(opts)
             arguments
