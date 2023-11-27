@@ -153,6 +153,7 @@ classdef (Abstract) ScannerKit < handle & mlsystem.IHandle
                 opts.bids_kit mlkinetics.BidsKit {mustBeNonempty}
                 opts.tracer_kit mlkinetics.TracerKit {mustBeNonempty}
                 opts.scanner_tags {mustBeText}
+                opts.noclobber logical = true % helps performance by use of selectFilesystemTool()
             end
             copts = namedargs2cell(opts);
 
@@ -707,6 +708,7 @@ classdef (Abstract) ScannerKit < handle & mlsystem.IHandle
         bids_kit_
         device_
         imaging_context_
+        noclobber_
         tracer_kit_
     end
 
@@ -728,9 +730,11 @@ classdef (Abstract) ScannerKit < handle & mlsystem.IHandle
                 opts.bids_kit mlkinetics.BidsKit {mustBeNonempty}
                 opts.tracer_kit mlkinetics.TracerKit {mustBeNonempty}
                 opts.scanner_tags {mustBeText}
+                opts.noclobber logical = true % helps performance by avoiding filesystem writing
             end
             this.bids_kit_ = opts.bids_kit;
             this.tracer_kit_ = opts.tracer_kit;
+            this.noclobber_ = opts.noclobber;
         end
         function this = ScannerKit()
         end
