@@ -388,8 +388,10 @@ classdef (Abstract) ScannerKit < handle & mlsystem.IHandle
                 timesMid_ = scanner2.timesMid;
             end 
             aif(aif < 0) = 0;
+            aif(isnan(aif)) = 0;
             scan(scan < 0) = 0;
             aif2(aif2 < 0) = 0;
+            aif2(isnan(aif2)) = 0;
             scan2(scan2 < 0) = 0;
             
             scan_ = mixImagingContexts(scan, scan2, ipr.fracMixing); % calibrated, decaying
@@ -465,7 +467,8 @@ classdef (Abstract) ScannerKit < handle & mlsystem.IHandle
             else                
                 aif = interp1(t, aif, 0:s.timesMid(end), 'linear', 0);
             end
-            aif(aif < 0) = 0;            
+            aif(aif < 0) = 0;   
+            aif(isnan(aif)) = 0;
             aif__ = aif;            
             Dt = a.Dt;
         end
@@ -516,7 +519,8 @@ classdef (Abstract) ScannerKit < handle & mlsystem.IHandle
                 ad.T = ad.T + 1;
             end
             aif = interp1([-ad.tBuffer t], [0 aif], -ad.tBuffer:s.timesMid(end), 'linear', 0);
-            aif(aif < 0) = 0;            
+            aif(aif < 0) = 0;
+            aif(isnan(aif)) = 0;
             aif__ = aif;            
             Dt = a.Dt;
         end
@@ -563,7 +567,8 @@ classdef (Abstract) ScannerKit < handle & mlsystem.IHandle
                 ad.T = ad.T + 1;
             end
             aif = interp1([-ad.tBuffer t], [0 aif], -ad.tBuffer:s.timesMid(end), 'linear', 0);
-            aif(aif < 0) = 0;   
+            aif(aif < 0) = 0; 
+            aif(isnan(aif)) = 0;
             aif__ = aif;
         end        
         function [tac__,timesMid__,t0__,idif__,Dt,datetimePeak] = mixTacIdif(devkit, varargin)
@@ -608,7 +613,8 @@ classdef (Abstract) ScannerKit < handle & mlsystem.IHandle
             
             % adjust aif__
             idif = interp1([0 t], [0 idif], 0:s.timesMid(end), 'linear', 0);
-            idif(idif < 0) = 0;            
+            idif(idif < 0) = 0;    
+            idif(isnan(idif)) = 0;
             idif__ = idif; 
 
             % trivial values
@@ -667,6 +673,7 @@ classdef (Abstract) ScannerKit < handle & mlsystem.IHandle
             aif2 = interp1(offset + (0:n2-1), aif2, 0:n-1, 'linear', 0);
             aif__ = mixImagingContexts(aif, aif2, ipr.fracMixing); 
             aif__(aif__ < 0) = 0;  
+            aif__(isnan(aif__)) = 0;
         end
         function [tac__,timesMid__,aif__,Dt,datetimePeak] = mixTacIdifAugmented(devkit, varargin)
             ip = inputParser;
@@ -698,7 +705,8 @@ classdef (Abstract) ScannerKit < handle & mlsystem.IHandle
                 ad.T = ad.T + 1;
             end
             aif = interp1([-ad.tBuffer t], [0 aif], -ad.tBuffer:s.timesMid(end), 'linear', 0);
-            aif(aif < 0) = 0;            
+            aif(aif < 0) = 0;      
+            aif(isnan(aif)) = 0;
             aif__ = aif;  
 
             % trivial values
