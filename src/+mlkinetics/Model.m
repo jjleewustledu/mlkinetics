@@ -328,7 +328,6 @@ classdef (Abstract) Model < handle & mlsystem.IHandle
             ic = mlfourd.ImagingContext2(ics);
             ic.fileprefix = ic.fileprefix + "_" + stackstr();
         end
-        function t = tauObs(~)    
         function t = tauObs(this)
             %% duration of valid data ~ timeCliff - t0
 
@@ -420,7 +419,6 @@ classdef (Abstract) Model < handle & mlsystem.IHandle
         bids_kit_
         data_ % ancillary value data used by model
         input_func_kit_
-        model_tags_
         parc_kit_        
         representation_kit_
         scanner_kit_
