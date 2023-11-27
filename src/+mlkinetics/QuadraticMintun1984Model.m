@@ -1,15 +1,10 @@
 classdef QuadraticMintun1984Model < handle & mlkinetics.QuadraticModel
     %% QUADRATICMINTUN1984MODEL
-    %  N.B. assumptions made in buildMetabolites(this, ).
+    %  N.B. assumptions made in build_metabolites(this, ).
     %  
     %  Created 06-Sep-2023 15:20:40 by jjlee in repository /Users/jjlee/MATLAB-Drive/mlkinetics/src/+mlkinetics.
     %  Developed on Matlab 9.14.0.2337262 (R2023a) Update 5 for MACI64.  Copyright 2023 John J. Lee.
     
-    properties (Constant)
-        NOMINAL_O2_CONTENT = 0.17 % mL O2.  Estimated from Ito, Eur J Nucl Med Mol Imaging (2004) 31:635-643.
-                                  % DOI 10.1007/s00259-003-1430-8
-    end
-
     properties (Dependent)
         oo_ic
 
@@ -53,7 +48,7 @@ classdef QuadraticMintun1984Model < handle & mlkinetics.QuadraticModel
     end
 
     methods
-        function this = buildMetabolites(this)
+        function this = build_metabolites(this)
             import mlkinetics.OxyMetabConversion
 
             [~,idx0] = max(this.artery_interpolated_ > 0.05*max(this.artery_interpolated_));
@@ -81,16 +76,16 @@ classdef QuadraticMintun1984Model < handle & mlkinetics.QuadraticModel
             this.artery_oxygen_ = this.artery_interpolated_ - this.artery_water_metab_;
             this.integral_artery_oxygen_ = ...
                 0.01*OxyMetabConversion.RATIO_SMALL_LARGE_HCT*OxyMetabConversion.DENSITY_BRAIN* ...
-                trapz(this.artery_oxygen_(this.t0_+1:this.tF_+1));
+                trapz(this.artery_oxygen_(this.t0+1:this.tF+1));
         end
-        function mdl = buildModel(~, obs, f1)
-            %% buildModel 
+        function mdl = build_model(~, obs, f1)
+            %% build_model 
             %  @param obs are numeric PET_{obs} := \int_{t \in \text{obs}} dt' \varrho(t').
             %  @param f1 are numeric F1 or similar flows in 1/s.
             %  @returns mdl.  A1, A2 are in mdl.Coefficients{:,'Estimate'}.
             %  See also:  https://www.mathworks.com/help/releases/R2016b/stats/nonlinear-regression-workflow.html
             
-            fprintf('QuadraticMintun1984Model.buildModel ..........\n');
+            fprintf('QuadraticMintun1984Model.build_model ..........\n');
             mdl = fitnlm( ...
                 ascolumn(f1), ...
                 ascolumn(obs), ...
@@ -104,7 +99,7 @@ classdef QuadraticMintun1984Model < handle & mlkinetics.QuadraticModel
                 plotSlice(mdl);
             end
         end
-        function soln = make_solution(this)
+        function soln = build_solution(this)
 
             % check dynamic imaging
 
@@ -121,17 +116,17 @@ classdef QuadraticMintun1984Model < handle & mlkinetics.QuadraticModel
 
             % quadratic models
             obsWaterMetab = this.obsFromAif(this.artery_water_metab, this.canonical_f); % time series -> \int_t rho(t), in sec
-            this.modelB12 = this.buildModel(obsWaterMetab, this.canonical_f); % N.B. nonlin model mapping f -> obs            
+            this.modelB12 = this.build_model(obsWaterMetab, this.canonical_f); % N.B. nonlin model mapping f -> obs            
             
             obsOxygen = this.obsFromAif(this.artery_oxygen, this.canonical_f); % time series -> \int_t rho(t), in sec
-            this.modelB34 = this.buildModel(obsOxygen, this.canonical_f); % N.B. nonlin model mapping f -> obs
+            this.modelB34 = this.build_model(obsOxygen, this.canonical_f); % N.B. nonlin model mapping f -> obs
             
             poly12_ic = f_ic__.^2.*this.b1 + f_ic__.*this.b2;
             poly34_ic = f_ic__.^2.*this.b3 + f_ic__.*this.b4;
 
             % PET_{obs}
             obsPet_ifc = copy(this.dlicv_ic.imagingFormat);
-            obsPet_ifc.img = this.obsFromTac(this.measurement_, t0=this.t0_, tF=this.tF_);
+            obsPet_ifc.img = this.obsFromTac(this.measurement_, t0=this.t0, tF=this.tF);
             obsPet_ic = mlfourd.ImagingContext2(obsPet_ifc);
             obsPet_ic = obsPet_ic.blurred(ps);
 
@@ -205,23 +200,16 @@ classdef QuadraticMintun1984Model < handle & mlkinetics.QuadraticModel
         function this = create(varargin)
 
             this = mlkinetics.QuadraticMintun1984Model(varargin{:});
-            [this.measurement_,this.timesMid_,t0,this.artery_interpolated_] = this.mixTacAif( ...
-                this.scanner_kit_, ...
-                scanner_kit=this.scanner_kit_, ...
-                input_func_kit=this.input_func_kit_, ...
-                roi=this.dlicv_ic);
-            this.t0_ = t0;
-            this.tF_ = min(t0 + this.tauObs, this.timeCliff);
 
-            assert(isfield(this.data_, "cbf_ic"), ...
-                "%s: data_ is missing cbf_ic", stackstr())
-            assert(isfield(this.data_, "cbv_ic"), ...
-                "%s: data_ is missing cbv_ic", stackstr())
-            this.cbf_ic_ = this.data_.cbf_ic;
-            this.cbv_ic_ = this.data_.cbv_ic;
+            assert(isfield(this.data, "cbf_ic"), ...
+                "%s: data is missing cbf_ic", stackstr())
+            assert(isfield(this.data, "cbv_ic"), ...
+                "%s: data is missing cbv_ic", stackstr())
+            this.cbf_ic_ = this.data.cbf_ic;
+            this.cbv_ic_ = this.data.cbv_ic;
 
             % apply Mintun's kinetics assumptions
-            this = buildMetabolites(this);
+            this = build_metabolites(this);
         end
     end
 
