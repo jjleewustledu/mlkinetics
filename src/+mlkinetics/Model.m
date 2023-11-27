@@ -44,6 +44,7 @@ classdef (Abstract) Model < handle & mlsystem.IHandle
                 return
             end
             [~,~,~,g] = mixTacAif(this);
+            this.artery_interpolated_ = g;
         end
         function g = get.bids_med(this)
             if ~isempty(this.bids_med_)
@@ -63,6 +64,7 @@ classdef (Abstract) Model < handle & mlsystem.IHandle
                 return
             end
             [~,~,~,~,~,g] = mixTacAif(this);
+            this.datetimePeak_ = g;
         end
         function g = get.dlicv_ic(this)
             g = this.parc.dlicv_ic;
@@ -73,6 +75,7 @@ classdef (Abstract) Model < handle & mlsystem.IHandle
                 return
             end
             [~,~,~,~,g] = mixTacAif(this);
+            this.Dt_ = g;
         end
         function g = get.input_func(this)
             if ~isempty(this.input_func_)
@@ -88,6 +91,7 @@ classdef (Abstract) Model < handle & mlsystem.IHandle
                 return
             end
             g = mixTacAif(this);
+            his.measurement_ = g;
         end
         function g = get.mgdL_to_mmolL(this)
             if isfield(this.data, "mgdL_to_mmolL")
@@ -130,8 +134,9 @@ classdef (Abstract) Model < handle & mlsystem.IHandle
                 g = this.t0_ + this.timeStar();
                 return
             end
-            [~,~,g] = mixTacAif(this);
-            g = g + this.timeStar();
+            [~,~,g_] = mixTacAif(this);
+            this.t0_ = g_;
+            g = this.t0_ + this.timeStar();
         end
         function g = get.tF(this)
             g = min(this.t0 + this.tauObs(), this.timeCliff());
@@ -209,26 +214,30 @@ classdef (Abstract) Model < handle & mlsystem.IHandle
 
         %% UTILITIES
 
+        function [measurement,times_sampled,t0,artery_interpolated,Dt,datetimePeak] = mixTacAif(this)
+            %% Adapts kinetic models to legacy mixture methods enumerated in mlkinetics.ScannerKit.
+            %  Updates this.{measurement_,times_sampled_,t0_,artery_interpolated_,Dt_,datetimePeak_}.
 
             arguments
                 this mlkinetics.Model                
             end
 
+            tic
             switch class(this.input_func_kit_)
-                case 'mlkinetics.CapracKit'
-                    [measurement,timesMid,t0,artery_interpolated,Dt,datetimePeak] = this.scanner_kit_.mixTacAif( ...
+                case 'mlcapintec.CapracKit'
+                    [measurement,times_sampled,t0,artery_interpolated,Dt,datetimePeak] = this.scanner_kit_.mixTacAif( ...
                         this.scanner_kit_, ...
                         scanner_kit=this.scanner_kit_, ...
                         input_func_kit=this.input_func_kit_, ...
                         roi=this.dlicv_ic);
-                case 'mlkinetics.TwiliteKit'
-                    [measurement,timesMid,t0,artery_interpolated,Dt,datetimePeak] = this.scanner_kit_.mixTacAif( ...
+                case 'mlswisstrace.TwiliteKit'
+                    [measurement,times_sampled,t0,artery_interpolated,Dt,datetimePeak] = this.scanner_kit_.mixTacAif( ...
                         this.scanner_kit_, ...
                         scanner_kit=this.scanner_kit_, ...
                         input_func_kit=this.input_func_kit_, ...
                         roi=this.dlicv_ic);
-                case 'mlkinetics.IdifKit'
-                    [measurement,timesMid,t0,artery_interpolated,Dt,datetimePeak] = this.scanner_kit_.mixTacIdif( ...
+                case {'mlkinetics.IdifKit', 'mlkinetics.MipIdifKit', 'mlkinetics.FungIdifKit'}
+                    [measurement,times_sampled,t0,artery_interpolated,Dt,datetimePeak] = this.scanner_kit_.mixTacIdif( ...
                         this.scanner_kit_, ...
                         scanner_kit=this.scanner_kit_, ...
                         input_func_kit=this.input_func_kit_, ...
@@ -390,6 +399,9 @@ classdef (Abstract) Model < handle & mlsystem.IHandle
             end
             copts = namedargs2cell(opts);
             this.initialize(copts{:});
+
+            [this.measurement_,this.times_sampled_,this.t0_,this.artery_interpolated_] = this.mixTacAif();        
+            this.set_artery_interpolated(this.artery_interpolated_);
         end
     end
 
