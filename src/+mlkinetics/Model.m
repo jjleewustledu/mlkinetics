@@ -11,24 +11,25 @@ classdef (Abstract) Model < handle & mlsystem.IHandle
     end
 
     methods (Abstract)
-        make_solution(this)
+        build_solution(this)
     end
 
     %% Shared Implementations
 
     properties (Dependent)
-        bids_med
-        data % ancillary data used by model
+        bids_med % from BidsKit
+        data % struct of ancillary data used by model
         dlicv_ic % coregistered to dynamic PET
-        input_func
+        input_func % from InputFuncKit
         mgdL_to_mmolL % [mg/dL] * mgdL_to_mmolL -> [mmol/L]
-        model
-        parc
+        model % reference loopback provides legacy support
+        parc % from ParcKit
         product % intermediate from ScannerKit.do_make_activity_density(); final product
-        tF
+        tF % see also tauObs
         unique_indices
 
         %% lazy initialization by mixTacAif()
+
         measurement % numeric representation expected by solvers
         times_sampled
         t0
