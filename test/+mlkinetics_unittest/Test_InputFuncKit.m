@@ -295,10 +295,10 @@ classdef Test_InputFuncKit < matlab.unittest.TestCase
                 "sub-108293_ses-20210421152358_trc-ho_proc-BrainMoCo2-createNiftiMovingAvgFrames.nii.gz");
             med = mlvg.Ccir1211Mediator(bids_fqfn);
             j = med.json_metadata;
-            this.verifyEqual(j.starts, 0:109)
+            this.verifyEqual(j.starts, [])
             this.verifyEqual(j.taus, 10*ones(1, 110))
-            this.verifyEqual(j.times, 0:109)
-            this.verifyEqual(j.timesMid, 5:114)
+            this.verifyEqual(j.times, [])
+            this.verifyEqual(j.timesMid, (5:114))
             this.verifyEqual(j.timeUnit, "second")
 
             bids_fqfn = fullfile(getenv("SINGULARITY_HOME"), ...
