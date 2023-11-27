@@ -382,10 +382,21 @@ classdef (Abstract) Model < handle & mlsystem.IHandle
                 that.input_func_kit_ = copy(this.input_func_kit_); end
             if ~isempty(this.parc_kit_)
                 that.parc_kit_ = copy(this.parc_kit_); end
+            if ~isempty(this.representation_kit_)
+                that.representation_kit_ = copy(this.representation_kit_); end
             if ~isempty(this.scanner_kit_)
                 that.scanner_kit_ = copy(this.scanner_kit_); end
             if ~isempty(this.tracer_kit_)
                 that.tracer_kit_ = copy(this.tracer_kit_); end
+
+            if ~isempty(this.bids_med_)
+                that.bids_med_ = copy(this.bids_med_); end
+            if ~isempty(this.input_func_)
+                that.input_func_ = copy(this.input_func_); end
+            if ~isempty(this.parc_)
+                that.parc_ = copy(this.parc_); end
+            if ~isempty(this.product_)
+                that.product_ = copy(this.product_); end
         end
         function this = Model(opts)
             arguments
