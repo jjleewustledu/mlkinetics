@@ -1,7 +1,8 @@
 classdef (Abstract) Model < handle & mlsystem.IHandle
-    %% The mlkinetics.Model class hierarchy loosely implements the builder design pattern (GoF, pp. 97ff.).
-    %  Useful for building are the product property and method function make_solution(). 
-    %  The director of the builder will be an mlkinetics.ModelKit. 
+    %% The mlkinetics.Model class hierarchy loosely implements the builder design pattern (GoF, pp. 97ff.).  
+    %  Subclasses should implement static create() that provides class constructors. 
+    %  Method function build_solution() should update the product property and return it.
+    %  The director of the builder should be an mlkinetics.ModelKit. 
     %  
     %  Created 13-Jun-2023 22:58:44 by jjlee in repository /Users/jjlee/MATLAB-Drive/mlkinetics/src/+mlkinetics.
     %  Developed on Matlab 9.14.0.2254940 (R2023a) Update 2 for MACI64.  Copyright 2023 John J. Lee.
@@ -123,7 +124,7 @@ classdef (Abstract) Model < handle & mlsystem.IHandle
                 return
             end
 
-            % lazy init from ScannerKit
+            % defaults to starting data which is lazy init from ScannerKit
             this.product_ = this.scanner_kit_.do_make_activity_density();
             g = this.product_;
         end
@@ -252,7 +253,7 @@ classdef (Abstract) Model < handle & mlsystem.IHandle
                     t0 = 0;
                     artery = asrow(ad_ifk.imagingFormat.img);
                     tauF = times_sampled(end) - times_sampled(end-1);
-                    artery_interpolated = interp1(times_sampled, artery, 0:times_sampled(end)+tauF/2);
+                    artery_interpolated = interp1(times_sampled, artery, 0:(times_sampled(end)+tauF/2));
                     artery_interpolated(isnan(artery_interpolated)) = 0;
                     Dt = 0;
                     [~,idxPeak] = max(artery_interpolated);
