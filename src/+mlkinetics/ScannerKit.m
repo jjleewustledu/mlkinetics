@@ -210,7 +210,7 @@ classdef (Abstract) ScannerKit < handle & mlsystem.IHandle
                                  arterialDev.activityDensity(), ...
                                  unifTimes);
             scannerAct = interp1(scannerDev.timesMid, ...
-                                scannerDev.activityDensity('volumeAveraged', true), ...
+                                single(scannerDev.activityDensity('volumeAveraged', true)), ...
                                 unifTimes);
             dscannerAct = movmean(diff(scannerAct), 9);
             if ~isempty(getenv('DEBUG'))
@@ -422,7 +422,8 @@ classdef (Abstract) ScannerKit < handle & mlsystem.IHandle
             sk = ipr.scanner_kit; 
             s = sk.do_make_device();
             s = s.masked(ipr.roi);
-            tac = s.activityDensity(decayCorrected=ipr.scanner_kit.decayCorrected);
+            tac = s.activityDensity();
+            tac = single(tac);
             tac(tac < 0) = 0;    
             tac = ad.normalizationFactor*tac; % empirical normalization                   
             tac__ = tac;
@@ -487,7 +488,8 @@ classdef (Abstract) ScannerKit < handle & mlsystem.IHandle
             
             % scannerDevs provide calibrations & ROI-volume averaging            
             s = ipr.scanner.volumeAveraged(ipr.roi);
-            tac = s.activityDensity(decayCorrected=ipr.scanner_kit.decayCorrected);
+            tac = s.activityDensity();
+            tac = single(tac);
             tac(tac < 0) = 0;                       
             tac = ad.normalizationFactor*tac; % empirical normalization
             tac__ = tac;
@@ -532,7 +534,8 @@ classdef (Abstract) ScannerKit < handle & mlsystem.IHandle
             
             % scannerDevs provide calibrations & ROI-volume averaging            
             s = ipr.scanner.volumeAveraged(ipr.roi);
-            tac = s.activityDensity(decayCorrected=ipr.scanner_kit.decayCorrected);
+            tac = s.activityDensity();
+            tac = single(tac);
             tac(tac < 0) = 0;                       
             tac = ad.normalizationFactor*tac; % empirical normalization
             tac__ = tac;
@@ -584,7 +587,8 @@ classdef (Abstract) ScannerKit < handle & mlsystem.IHandle
             sk = ipr.scanner_kit; 
             s = sk.do_make_device();
             s = s.masked(ipr.roi);
-            tac = s.activityDensity(decayCorrected=ipr.scanner_kit.decayCorrected);
+            tac = s.activityDensity();
+            tac = single(tac);
             tac(tac < 0) = 0;                       
             tac__ = tac;
             taus__ = s.taus;
@@ -677,7 +681,8 @@ classdef (Abstract) ScannerKit < handle & mlsystem.IHandle
             
             % scannerDevs provide calibrations & ROI-volume averaging            
             s = ipr.scanner.volumeAveraged(ipr.roi);
-            tac = s.activityDensity(decayCorrected=ipr.scanner_kit.decayCorrected);
+            tac = s.activityDensity();
+            tac = single(tac);
             tac(tac < 0) = 0;                       
             tac = ad.normalizationFactor*tac; % empirical normalization
             tac__ = tac;
