@@ -264,17 +264,55 @@ classdef (Abstract) Model < handle & mlsystem.IHandle
                         stackstr(), class(this.input_func_kit_))
             end
 
+            measurement = asrow(measurement);
             this.measurement_ = measurement;
+            times_sampled = asrow(times_sampled);
             this.times_sampled_ = times_sampled;
             this.t0_ = t0;
-            this.artery_interpolated_ = artery_interpolated;
+            this.artery_interpolated_ = this.wb2plasma(asrow(artery_interpolated));
             this.Dt_ = Dt;
             this.datetimePeak_ = datetimePeak;
 
             fprintf(stackstr()+":")
             toc
         end
+        function ic = reshape_from_parc(this, ic)
+            arguments
+                this mlkinetics.Model
+                ic {mustBeNonempty}
             end
+            ic = this.parc.reshape_from_parc(ic);
+        end
+        function ic = reshape_to_parc(this, ics)
+            arguments
+                this mlkinetics.Model
+                ics {mustBeNonempty}
+            end
+
+            if iscell(ics)
+                ic = ics{1};
+                ifc = ic.imagingFormat;
+                for idx = 2:length(ics)
+                    try
+                        ic_idx = ics{idx};
+                        ifc_idx = ic_idx.imagingFormat;
+                        N4 = size(ifc_idx.img, 4);
+                        ifc.img(:,:,:,idx:idx+N4-1) = ifc_idx.img;                        
+                    catch ME
+                        handexcept(ME)
+                    end
+                end
+                ic = mlfourd.ImagingContext2(ifc);
+                ic.fileprefix = ic.fileprefix + "_" + stackstr();
+                return
+            end
+            if isa(ics, "mlfourd.ImagingContext2")
+                ic = this.parc.reshape_to_parc(ics); % 3D or 4D
+                ic.fileprefix = ic.fileprefix + "_" + stackstr();
+                return
+            end
+            ic = mlfourd.ImagingContext2(ics);
+            ic.fileprefix = ic.fileprefix + "_" + stackstr();
         end
         function t = tauObs(~)    
         function t = tauObs(this)
