@@ -142,6 +142,47 @@ classdef (Abstract) Model < handle & mlsystem.IHandle
                 return
             end
             [~,g] = mixTacAif(this);
+            this.times_sampled_ = g;
+        end
+
+        %% legacy support for mlpet.TracerKineticsModel
+        
+        function set_times_sampled(this, s)
+            if isempty(s)
+                return
+            end
+            this.times_sampled_ = asrow(s);
+        end
+        function set_artery_interpolated(this, s)
+            if isempty(s)
+                return
+            end            
+            
+            try
+                assert(~isempty(this.times_sampled))
+                s = double(s); % ImagingContext2 -> double
+    
+                % immediate match
+                if length(s) == length(this.times_sampled)
+                    this.artery_interpolated_ = asrow(s);
+                    return
+                end
+    
+                % artery_interpolated_ may be shorter than scanner times_sampled,
+                % in which case interp1 is likely most robust
+                tBuffer = 0;
+                if length(s) < floor(this.times_sampled(end)) + tBuffer + 1
+                    this.artery_interpolated_ = asrow( ...
+                        interp1(-tBuffer:(length(s)-tBuffer-1), s, -tBuffer:this.times_sampled(end), ...
+                        'linear', 0));
+                    return
+                end
+                
+                % best remaining guess
+                this.artery_interpolated_ = asrow(s);
+            catch ME
+                handwarning(ME) % artery_interpolated_ <- mixTacAif(), usually
+            end
         end
     end
 
@@ -225,18 +266,38 @@ classdef (Abstract) Model < handle & mlsystem.IHandle
             end
         end
         function t = tauObs(~)    
+        function t = tauObs(this)
             %% duration of valid data ~ timeCliff - t0
-            t = NaN;
+
+            if ~isempty(this.tauObs_)
+                t = this.tauObs_;
+                return
+            end
+
+            this.tauObs_ = this.times_sampled(end) - this.times_sampled(1) - this.timeStar;
+            t = this.tauObs_;
         end
-        function t = timeCliff(~)
+        function t = timeCliff(this)
             %% time at which valid AIF measurements abruptly end because of experimental conditions.
             %  timeCliff <= tF, the last time recorded in dataframes.
 
-            t = Inf;
+            if ~isempty(this.timeCliff_)
+                t = this.timeCliff_;
+                return
+            end
+            
+            this.timeCliff_ = this.times_sampled(end);
+            t = this.timeCliff_;
         end
         function t = timeStar(~)  
             %% time at which model requirements such as steady-state or linearity are met
-            t = NaN;
+            t = 0;
+        end
+        function g = trcMassConversion(g, varargin)
+            %% trivial implementation to be overloaded
+        end
+        function p = wb2plasma(~, wb, varargin)
+            p = wb;
         end
     end
 
@@ -297,7 +358,9 @@ classdef (Abstract) Model < handle & mlsystem.IHandle
         product_
         solver_ 
         t0_ % see also mixTacAif()
+        tauObs_
         times_sampled_ % see also mixTacAif()
+        timeCliff_
     end
 
     methods (Access = protected)
@@ -333,41 +396,6 @@ classdef (Abstract) Model < handle & mlsystem.IHandle
     %% HIDDEN
 
     methods (Hidden)
-
-        %% legacy support for mlpet.TracerKineticsModel
-        
-        function set_times_sampled(this, s)
-            if isempty(s)
-                return
-            end
-            this.times_sampled_ = asrow(s);
-        end
-        function set_artery_interpolated(this, s)
-            if isempty(s)
-                return
-            end            
-            
-            assert(~isempty(this.times_sampled))
-            s = double(s); % ImagingContext2 -> double
-
-            % immediate match
-            if length(s) == length(this.times_sampled)
-                this.artery_interpolated_ = asrow(s);
-                return
-            end
-
-            % artery_interpolated_ may be shorter than scanner times_sampled
-            tBuffer = 0;
-            if length(s) < floor(this.times_sampled(end)) + tBuffer + 1
-                this.artery_interpolated_ = asrow( ...
-                    interp1(-tBuffer:(length(s)-tBuffer-1), s, -tBuffer:this.times_sampled(end), ...
-                    'linear', 0));
-                return
-            end
-            
-            % best remaining guess
-            this.artery_interpolated_ = asrow(s);
-        end
     end
     
     %  Created with mlsystem.Newcl, inspired by Frank Gonzalez-Morphy's newfcn.
