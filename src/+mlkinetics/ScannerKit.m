@@ -48,9 +48,17 @@ classdef (Abstract) ScannerKit < handle & mlsystem.IHandle
             %  uniformTimes logical = false, applicable only if volumeAveraged.
             %  typ text = 'single'.
 
-            dev = do_make_device(this);
-            a = dev.activity('typ', 'mlfourd.ImagingContext2', varargin{:});
-            ic = this.do_make_imaging(a);
+            if ~isempty(this.imaging_context_)
+                ic = copy(this.imaging_context_);
+                return
+            end
+
+            if isempty(this.device_)
+                do_make_device(this);
+            end
+            a = this.device_.activity(varargin{:});
+            this.imaging_context_ = this.do_make_imaging(a);
+            ic = copy(this.imaging_context_);
         end
         function ic = do_make_activity_density(this, varargin)
             %% Bq/mL
@@ -64,11 +72,18 @@ classdef (Abstract) ScannerKit < handle & mlsystem.IHandle
             %  uniformTimes logical = false, applicable only if volumeAveraged.
             %  typ text = 'single'.
 
-            dev = do_make_device(this);
-            a = dev.activityDensity('typ', 'mlfourd.ImagingContext2', varargin{:});
-            ic = this.do_make_imaging(a);
+            if ~isempty(this.imaging_context_)
+                ic = copy(this.imaging_context_);
+                return
+            end
+
+            if isempty(this.device_)
+                do_make_device(this);
+            end
+            a = this.device_.activityDensity(varargin{:});
+            this.imaging_context_ = this.do_make_imaging(a);
+            ic = copy(this.imaging_context_);
         end
-        function ic = do_make_imaging(this, measurement)
         function ic = do_make_imaging(this, measurement_ic)
             %% provides class-consistent fqfp and noclobber info to measurement
 
@@ -691,6 +706,7 @@ classdef (Abstract) ScannerKit < handle & mlsystem.IHandle
     properties (Access = protected)
         bids_kit_
         device_
+        imaging_context_
         tracer_kit_
     end
 
@@ -699,6 +715,10 @@ classdef (Abstract) ScannerKit < handle & mlsystem.IHandle
             that = copyElement@matlab.mixin.Copyable(this);
             if ~isempty(this.bids_kit_)
                 that.bids_kit_ = copy(this.bids_kit_); end
+            if ~isempty(this.device_)
+                that.device_ = copy(this.device_); end
+            if ~isempty(this.imaging_context_)
+                that.imaging_context_ = copy(this.imaging_context_); end
             if ~isempty(this.tracer_kit_)
                 that.tracer_kit_ = copy(this.tracer_kit_); end
         end        
