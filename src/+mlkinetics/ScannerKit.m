@@ -444,7 +444,7 @@ classdef (Abstract) ScannerKit < handle & mlsystem.IHandle
             a0 = ifk.do_make_device();
             [a, datetimePeak] = mlkinetics.ScannerKit.alignArterialToScanner( ...
                 a0, s, 'sameWorldline', false);
-            aif = a.activityDensity(Nt=Nt, decayCorrected=ipr.scanner_kit.decayCorrected);
+            aif = a.activityDensity(Nt=Nt);
             switch class(a)
                 case 'mlswisstrace.TwiliteDevice'
                     t = (0:Nt-1) - seconds(s.datetime0 - a.datetime0);
@@ -503,7 +503,7 @@ classdef (Abstract) ScannerKit < handle & mlsystem.IHandle
             a0 = ipr.arterial;
             [a, datetimePeak] = devkit.alignArterialToScanner( ...
                 a0, s, 'sameWorldline', false);
-            aif = a.activityDensity(Nt=Nt, decayCorrected=ipr.scanner_kit.decayCorrected);
+            aif = a.activityDensity(Nt=Nt);
             switch class(a)
                 case 'mlswisstrace.TwiliteDevice'
                     t = (0:Nt-1) - seconds(s.datetime0 - a.datetime0);
@@ -550,8 +550,8 @@ classdef (Abstract) ScannerKit < handle & mlsystem.IHandle
             [a1, datetimePeak] = devkit.alignArterialToScanner( ...
                 ipr.arterial{1}, s, 'sameWorldline', false);
             Dt = a1.Dt;
-            aif1 = a1.activityDensity(decayCorrected=ipr.scanner_kit.decayCorrected); % 1 Hz Twilite
-            aif2 = ipr.arterial{2}.activityDensityInterp1(decayCorrected=ipr.scanner_kit.decayCorrected); % 1 Hz interp1 of Caprac
+            aif1 = a1.activityDensity(); % 1 Hz Twilite
+            aif2 = ipr.arterial{2}.activityDensityInterp1(); % 1 Hz interp1 of Caprac
             daif = aif1(end) - aif2(1);
             aif = [aif1, aif2+daif];
             if length(aif) > Nt
@@ -607,7 +607,7 @@ classdef (Abstract) ScannerKit < handle & mlsystem.IHandle
             
             % idif
             ifk = ipr.input_func_kit;
-            idif = ifk.do_make_activity_density(decayCorrected=ipr.scanner_kit.decayCorrected);   
+            idif = ifk.do_make_activity_density();   
             idif = asrow(idif.imagingFormat.img);
             t = s.timesMid;
             
@@ -697,7 +697,7 @@ classdef (Abstract) ScannerKit < handle & mlsystem.IHandle
             
             % arterialDevs calibrate & align arterial times-series to localized scanner time-series 
             a = ipr.arterial;
-            aif = a.activityDensity(decayCorrected=ipr.scanner_kit.decayCorrected);
+            aif = a.activityDensity();
             t = a.timesMid;
             
             % use tBuffer to increase fidelity of kinetic model
