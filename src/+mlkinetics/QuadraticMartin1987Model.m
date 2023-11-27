@@ -56,8 +56,6 @@ classdef QuadraticMartin1987Model < handle & mlkinetics.QuadraticModel
         function this = create(varargin)
 
             this = mlkinetics.QuadraticMartin1987Model(varargin{:});
-            
-            [this.measurement_,this.times_sampled_,this.t0_,this.artery_interpolated_] = this.mixTacAif();
         end
     end
 
