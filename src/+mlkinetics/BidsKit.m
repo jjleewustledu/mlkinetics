@@ -56,16 +56,15 @@ classdef (Sealed) BidsKit < handle & mlsystem.IHandle
                 med = this.install_mediator(copts{:});
             end
         end
-        function save(this, fn)
+        function save(this)
+            saveas(this);
+        end
+        function saveas(this, fn)
             arguments
                 this mlkinetics.BidsKit
                 fn {mustBeTextScalar} = strcat(stackstr(), ".mat")
             end
             save(fn, 'this')
-        end
-        function s = sprintf(this, varargin)
-            med = this.make_bids_med(varargin{:});
-            s = sprintf("%s_%s", med.subjectFolder, med.sessionFolder);
         end
     end
 

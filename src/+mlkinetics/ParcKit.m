@@ -39,15 +39,15 @@ classdef (Sealed) ParcKit < handle & mlsystem.IHandle
                 parc = this.install_parc(copts{:});
             end
         end
-        function save(this, fn)
+        function save(this)
+            saveas(this);
+        end
+        function saveas(this, fn)
             arguments
                 this mlkinetics.ParcKit
                 fn {mustBeTextScalar} = strcat(stackstr(), ".mat")
             end
             save(fn, 'this')
-        end
-        function s = sprintf(this, tag)
-            s = sprintf(this.proto_registry_(tag));
         end
     end
 

@@ -68,6 +68,16 @@ classdef (Abstract) KineticsKit < handle & mlsystem.IHandle
             %% from ModelKit
             m = this.model_kit_.make_solution(varargin{:});
         end
+        function save(this)
+            saveas(this);
+        end
+        function saveas(this, fn)
+            arguments
+                this mlkinetics.KineticsKit
+                fn {mustBeTextScalar} = strcat(stackstr(), ".mat")
+            end
+            save(fn, 'this')
+        end
 
         %% physiological products
 

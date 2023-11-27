@@ -109,6 +109,15 @@ classdef (Abstract) ScannerKit < handle & mlsystem.IHandle
             end
             h = this.device_.plot(varargin{:});
         end        
+        function save(this)
+            saveas(this);
+        end
+        function saveas(this, fn)
+            arguments
+                this mlkinetics.ScannerKit
+                fn {mustBeTextScalar} = strcat(stackstr(), ".mat")
+            end
+            save(fn, 'this')
     end
 
     methods (Static)

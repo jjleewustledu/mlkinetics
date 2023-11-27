@@ -74,15 +74,15 @@ classdef (Sealed) ModelKit < handle & mlsystem.IHandle
         function h = plot(this, tag, varargin)
             h = plot(this.proto_registry_(tag), varargin{:});
         end
-        function save(this, fn)
+        function save(this)
+            saveas(this);
+        end
+        function saveas(this, fn)
             arguments
                 this mlkinetics.ModelKit
                 fn {mustBeTextScalar} = strcat(stackstr(), ".mat")
             end
             save(fn, 'this')
-        end
-        function s = sprintf(this, tag)
-            s = sprintf(this.proto_registry_(tag));
         end
     end
 

@@ -46,15 +46,16 @@ classdef (Sealed) RepresentationKit < handle & mlsystem.IHandle
                 copts = namedargs2cell(opts);
                 rep = this.install_representation(copts{:});
             end
+        end        
+        function save(this)
+            saveas(this);
         end
-        function save(this, fn)
+        function saveas(this, fn)
             arguments
                 this mlkinetics.RepresentationKit
                 fn {mustBeTextScalar} = strcat(stackstr(), ".mat")
             end
             save(fn, 'this')
-        end
-        function s = sprintf(this, varargin)
         end
     end
 
@@ -62,7 +63,7 @@ classdef (Sealed) RepresentationKit < handle & mlsystem.IHandle
 
         %% convenience create-methods for clients
 
-        function this = create(opts)            
+        function this = create(opts)
             %% bids_kit, counter_tags must be non-empty collections
 
             arguments

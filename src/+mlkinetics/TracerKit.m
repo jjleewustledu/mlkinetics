@@ -51,14 +51,15 @@ classdef (Sealed) TracerKit < handle & mlsystem.IHandle
         function r = make_ref_source(this)
             r = this.proto_ref_source_; 
         end
-        function save(this, fn)
+        function save(this)
+            saveas(this);
+        end
+        function saveas(this, fn)
             arguments
                 this mlkinetics.TracerKit
                 fn {mustBeTextScalar} = strcat(stackstr(), ".mat")
             end
             save(fn, 'this')
-        end
-        function s = sprintf(this, varargin)
         end
     end
 
