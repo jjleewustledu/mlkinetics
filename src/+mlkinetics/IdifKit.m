@@ -22,7 +22,8 @@ classdef IdifKit < handle & mlkinetics.InputFuncKit
                 fp = this.input_func_ic_.fileprefix;
                 this.input_func_ic_ = this.input_func_ic_.* ...
                     2.^( this.timesMid/this.halflife);
-                this.input_func_ic_.fileprefix = fp + "_decayCorrected";
+                this.input_func_ic_.fileprefix = ...
+                    mlpipeline.Bids.adjust_fileprefix(fp, post_proc="decayCorrected");
                 this.decayCorrected_ = true;
             end
         end
@@ -32,7 +33,8 @@ classdef IdifKit < handle & mlkinetics.InputFuncKit
                 fp = this.input_func_ic_.fileprefix;
                 this.input_func_ic_ = this.input_func_ic_.* ...
                     2.^(-this.timesMid/this.halflife);
-                this.input_func_ic_.fileprefix = fp + "_decayUncorrected";
+                this.input_func_ic_.fileprefix = ...
+                    mlpipeline.Bids.adjust_fileprefix(fp, post_proc="decayUnorrected");
                 this.decayCorrected_ = false;
             end
         end

@@ -83,18 +83,23 @@ classdef (Abstract) ScannerKit < handle & mlsystem.IHandle
             ic = this.do_make_imaging(a);
         end
         function ic = do_make_imaging(this, measurement)
+        function ic = do_make_imaging(this, measurement_ic)
+            %% provides class-consistent fqfp and noclobber info to measurement
+
             arguments
                 this mlkinetics.ScannerKit
-                measurement mlfourd.ImagingContext2
+                measurement_ic mlfourd.ImagingContext2
             end
             med_ = this.bids_kit_.make_bids_med();
             ic_ = med_.imagingContext;
-            fqfp = ic_.fqfileprefix;
-            if ~contains(fqfp, stackstr(3))
-                fqfp = sprintf("%s_%s", ic_.fqfileprefix, stackstr(3));
+            fp_ = ic_.fqfileprefix;
+            if ~contains(fp_, stackstr(3, use_dashes=true))
+                fp_ = mlpipeline.Bids.adjust_fileprefix( ...
+                    ic_.fileprefix, post_proc=stackstr(3, use_dashes=true));
             end
-            ic = copy(measurement);
-            ic.fqfileprefix = fqfp;
+            ic = measurement_ic;
+            ic.fileprefix = fp_;
+            ic.noclobber = this.noclobber;
         end
         function ic = do_make_view(this)
             if isempty(this.device_)
