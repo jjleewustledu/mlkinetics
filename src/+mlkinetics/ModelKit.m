@@ -160,17 +160,6 @@ classdef (Sealed) ModelKit < handle & mlsystem.IHandle
 
             %% decay-uncorrected models
             
-            if any(contains(opts.model_tags, "martin1987", IgnoreCase=true))
-                opts.scanner_kit.decayUncorrect();
-                opts.input_func_kit.decayUncorrect();
-                save(opts.input_func_kit);
-                copts = namedargs2cell(opts);
-                if any(contains(opts.model_tags, "quadratic", IgnoreCase=true))
-                    mdl = mlkinetics.QuadraticMartin1987Model.create(copts{:});
-                else
-                    mdl = mlkinetics.Martin1987Model.create(copts{:});
-                end
-            end
             if any(contains(opts.model_tags, "mintun1984", IgnoreCase=true))
                 opts.scanner_kit.decayUncorrect();
                 opts.input_func_kit.decayUncorrect();
@@ -196,6 +185,17 @@ classdef (Sealed) ModelKit < handle & mlsystem.IHandle
 
             %% decay-corrected models
 
+            if any(contains(opts.model_tags, "martin1987", IgnoreCase=true))
+                opts.scanner_kit.decayCorrect();
+                opts.input_func_kit.decayCorrect();
+                save(opts.input_func_kit);
+                copts = namedargs2cell(opts);
+                if any(contains(opts.model_tags, "quadratic", IgnoreCase=true))
+                    mdl = mlkinetics.QuadraticMartin1987Model.create(copts{:});
+                else
+                    mdl = mlkinetics.Martin1987Model.create(copts{:});
+                end
+            end
             if any(contains(opts.model_tags, "huang1980", IgnoreCase=true))
                 opts.scanner_kit.decayCorrect();
                 opts.input_func_kit.decayCorrect();

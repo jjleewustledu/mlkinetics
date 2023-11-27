@@ -33,20 +33,6 @@ classdef (Abstract) ScannerKit < handle & mlsystem.IHandle
     end
 
     methods
-        function this = decayCorrect(this)
-            if isempty(this.device_)
-                this.do_make_device();
-            end
-            decayCorrect(this.device_);
-            this.imaging_context_ = [];
-        end
-        function this = decayUncorrect(this)
-            if isempty(this.device_)
-                this.do_make_device();
-            end
-            decayUncorrect(this.device_);
-            this.imaging_context_ = [];
-        end
 
         %% make related products, with specialty relationships specified by the factory
 
@@ -105,7 +91,7 @@ classdef (Abstract) ScannerKit < handle & mlsystem.IHandle
             if isempty(this.device_)
                 do_make_device(this);
             end
-            ic = this.device_.activityDensity('typ', 'mlfourd.ImagingContext2');
+            ic = this.do_make_activity_density();
             ic.view();
         end
         function h = do_make_plot(this, varargin)
@@ -113,7 +99,7 @@ classdef (Abstract) ScannerKit < handle & mlsystem.IHandle
                 do_make_device(this);
             end
             h = this.device_.plot(varargin{:});
-        end        
+        end 
         function save(this)
             saveas(this);
         end
@@ -123,6 +109,24 @@ classdef (Abstract) ScannerKit < handle & mlsystem.IHandle
                 fn {mustBeTextScalar} = strcat(stackstr(), ".mat")
             end
             save(fn, 'this')
+        end
+
+        %% UTILITIES
+        
+        function this = decayCorrect(this)
+            if isempty(this.device_)
+                this.do_make_device();
+            end
+            decayCorrect(this.device_);
+            this.imaging_context_ = [];
+        end
+        function this = decayUncorrect(this)
+            if isempty(this.device_)
+                this.do_make_device();
+            end
+            decayUncorrect(this.device_);
+            this.imaging_context_ = [];
+        end
     end
 
     methods (Static)
