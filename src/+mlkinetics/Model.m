@@ -216,6 +216,20 @@ classdef (Abstract) Model < handle & mlsystem.IHandle
 
         %% UTILITIES
 
+        function tac = build_simulated(this, ks)
+            %% BUILD_SIMULATED simulates tissue activity with passed and internal parameters.
+            %  ks double is [k1 k2 k3 k4] ~ [f lambda PS Delta].
+
+            arguments
+                this mlkinetics.Model
+                ks double
+            end
+
+            tac = this.sampled(ks, this.Data, this.artery_interpolated, this.times_sampled);
+        end
+        function idx = indicesToCheck(this)
+            idx = this.parc.indicesToCheck();
+        end
         function [measurement,times_sampled,t0,artery_interpolated,Dt,datetimePeak] = mixTacAif(this)
             %% Adapts kinetic models to legacy mixture methods enumerated in mlkinetics.ScannerKit.
             %  Updates this.{measurement_,times_sampled_,t0_,artery_interpolated_,Dt_,datetimePeak_}.
@@ -352,6 +366,22 @@ classdef (Abstract) Model < handle & mlsystem.IHandle
 
     methods (Static)
         function q1 = solutionOnScannerFrames(q, times_sampled)
+            %% Selectively samples scanner activity estimated on uniform time-grid, 
+            %  integrating within scanner frames.
+            %  @param q that is empty resets internal data for times and q1 := [].
+            %  @param q is activity that is uniformly sampled in time.
+            %  @param times_sampled are the times of the midpoints of scanner frames, all times_sampled > 0.
+            %  @return q1 has the shape of times_sampled.
+            
+            if length(q) == length(times_sampled)
+                q1 = q;
+                return
+            end
+            
+            times_q = times_sampled(1):(times_sampled(1)+length(q)-1);
+            q1 = makima(times_q, q, times_sampled);
+        end
+        function q1 = solutionOnScannerFramesLegacy(q, times_sampled)
             %% Samples scanner scalar activity on times of midpoints of scanner frames.
             %  @param q that is empty resets internal data for times and q1 := [].
             %  @param q is activity that is uniformly sampled in time.
