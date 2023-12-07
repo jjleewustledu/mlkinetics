@@ -14,14 +14,16 @@ classdef Logan1996Model < handle & mlsystem.IHandle
     
     methods (Static)
         function this = instance(opts)
-            persistent uniqueInstance
-            if isempty(uniqueInstance)
-                this = mlkinetics.Logan1996Kit(opts);
-                uniqueInstance = this;
-            else
-                this = uniqueInstance;
-                this.opts = opts;
-            end
+            this = mlkinetics.Logan1996Kit(opts);
+            
+            % persistent uniqueInstance
+            % if isempty(uniqueInstance)
+            %     this = mlkinetics.Logan1996Kit(opts);
+            %     uniqueInstance = this;
+            % else
+            %     this = uniqueInstance;
+            %     this.opts = opts;
+            % end
         end  
     end
 

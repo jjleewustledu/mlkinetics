@@ -76,15 +76,18 @@ classdef (Sealed) GlcMetabKit < handle & mlkinetics.KineticsKit
 
     methods (Static)
         function this = instance(varargin)
-            persistent uniqueInstance
-            if isempty(uniqueInstance)
-                this = mlkinetics.GlcMetabKit();
-                this.install_kinetics(varargin{:});
-                uniqueInstance = this;
-            else
-                this = uniqueInstance;
-                this.install_kinetics(varargin{:});
-            end
+            this = mlkinetics.GlcMetabKit();
+            this.install_kinetics(varargin{:});
+            
+            % persistent uniqueInstance
+            % if isempty(uniqueInstance)
+            %     this = mlkinetics.GlcMetabKit();
+            %     this.install_kinetics(varargin{:});
+            %     uniqueInstance = this;
+            % else
+            %     this = uniqueInstance;
+            %     this.install_kinetics(varargin{:});
+            % end
         end  
     end
 

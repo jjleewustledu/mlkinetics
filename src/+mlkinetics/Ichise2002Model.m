@@ -15,14 +15,16 @@ classdef Ichise2002Model < handle & mlsystem.IHandle
     
     methods (Static)
         function this = instance(opts)
-            persistent uniqueInstance
-            if isempty(uniqueInstance)
-                this = mlkinetics.Ichise2002Kit(opts);
-                uniqueInstance = this;
-            else
-                this = uniqueInstance;
-                this.opts = opts;
-            end
+            this = mlkinetics.Ichise2002Kit(opts);
+
+            % persistent uniqueInstance
+            % if isempty(uniqueInstance)
+            %     this = mlkinetics.Ichise2002Kit(opts);
+            %     uniqueInstance = this;
+            % else
+            %     this = uniqueInstance;
+            %     this.opts = opts;
+            % end
         end  
     end
 

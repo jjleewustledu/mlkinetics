@@ -13,14 +13,16 @@ classdef AerobicGlycolysisKit < handle & mlkinetics.KineticsKit
     
     methods (Static)
         function this = instance(opts)
-            persistent uniqueInstance
-            if isempty(uniqueInstance)
-                this = mlkinetics.AerobicGlycolysisKit(opts);
-                uniqueInstance = this;
-            else
-                this = uniqueInstance;
-                this.opts = opts;
-            end
+            this = mlkinetics.AerobicGlycolysisKit(opts);
+
+            % persistent uniqueInstance
+            % if isempty(uniqueInstance)
+            %     this = mlkinetics.AerobicGlycolysisKit(opts);
+            %     uniqueInstance = this;
+            % else
+            %     this = uniqueInstance;
+            %     this.opts = opts;
+            % end
         end  
     end
 

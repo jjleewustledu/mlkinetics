@@ -28,15 +28,18 @@ classdef NiftiInputFuncKit < handle & mlkinetics.IdifKit
 
     methods (Static)
         function this = instance(varargin)
-            persistent uniqueInstance
-            if (isempty(uniqueInstance))
-                this = mlkinetics.NiftiInputFuncKit();
-                this.install_input_func(varargin{:})
-                uniqueInstance = this;
-            else
-                this = uniqueInstance;
-                this.install_input_func(varargin{:})
-            end
+            this = mlkinetics.NiftiInputFuncKit();
+            this.install_input_func(varargin{:})
+
+            % persistent uniqueInstance
+            % if (isempty(uniqueInstance))
+            %     this = mlkinetics.NiftiInputFuncKit();
+            %     this.install_input_func(varargin{:})
+            %     uniqueInstance = this;
+            % else
+            %     this = uniqueInstance;
+            %     this.install_input_func(varargin{:})
+            % end
         end
     end 
 

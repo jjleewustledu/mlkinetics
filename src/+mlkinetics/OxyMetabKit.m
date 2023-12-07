@@ -102,15 +102,18 @@ classdef (Sealed) OxyMetabKit < handle & mlkinetics.KineticsKit
 
     methods (Static)
         function this = instance(varargin)
-            persistent uniqueInstance
-            if isempty(uniqueInstance) 
-                this = mlkinetics.OxyMetabKit();
-                this.install_kinetics(varargin{:});
-                uniqueInstance = this;
-            else
-                this = uniqueInstance;
-                this.install_kinetics(varargin{:});
-            end
+            this = mlkinetics.OxyMetabKit();
+            this.install_kinetics(varargin{:});
+
+            % persistent uniqueInstance
+            % if isempty(uniqueInstance) 
+            %     this = mlkinetics.OxyMetabKit();
+            %     this.install_kinetics(varargin{:});
+            %     uniqueInstance = this;
+            % else
+            %     this = uniqueInstance;
+            %     this.install_kinetics(varargin{:});
+            % end
         end  
     end
 
