@@ -37,11 +37,10 @@ classdef (Sealed) TwoTCModel < handle & mlkinetics.TCModel
             %  @return ks_ in R^1 as mlfourd.ImagingContext2, without saving to filesystems.                                
 
             uindex = this.unique_indices;
-            Nx = size(this.parc, 1); % unique indices
-            % compare to Ny = size(this.parc, 2); % corresponding to timesMid
+            Nx = numel(uindex);
 
             meas_ic = mlfourd.ImagingContext2(this.measurement_);
-            meas_ic = this.parc_kit_.make_parc(meas_ic);
+            meas_ic = this.reshape_to_parc(meas_ic);
             meas_img = meas_ic.imagingFormat.img;
 
             ks_mat_ = zeros([Nx this.LENK+1], 'single');

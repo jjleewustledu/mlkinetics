@@ -52,15 +52,45 @@ classdef (Abstract) TCModel < handle & mlkinetics.Model
     end
 
     methods
-        function s = fqfp(this, opts)
-            arguments
-                this mlkinetics.TCModel
-                opts.tag {mustBeTextScalar} = "ks"
+        function soln = build_solution(this)
+            %% MAKE_SOLUTION
+            %  @return ks_ in R^1 as mlfourd.ImagingContext2, without saving to filesystems.                                
+
+            uindex = this.unique_indices;
+            Nx = numel(uindex);
+
+            meas_ic = mlfourd.ImagingContext2(this.measurement_);
+            meas_ic = this.reshape_to_parc(meas_ic);
+            meas_img = meas_ic.imagingFormat.img;
+
+            ks_mat_ = zeros([Nx this.LENK+1], 'single');
+            for idx = 1:Nx % parcs
+ 
+                if idx < 10; tic; end
+
+                % solve model and insert solutions into ks
+                this.build_model(measurement = asrow(meas_img(idx, :)));
+                this.solver_ = this.solver_.solve(@mlkinetics.TCModel.loss_function);
+                ks_mat_(idx, :) = [asrow(this.solver_.product.ks), this.solver_.loss];
+
+                if idx < 10
+                    fprintf("%s, idx->%i, uindex->%i:", stackstr(), idx, uindex(idx))
+                    toc
+                end
+
+                if any(uindex(idx) == this.indicesToCheck)
+                    h = this.solver_.plot(tag="parc->"+uindex(idx));
+                    saveFigure2(h, ...
+                        this.product.fqfp + "_" + stackstr() + "_uindex" + uindex(idx), ...
+                        closeFigure=true);
+                end                  
             end
 
-            s = this.product.fqfp;
-            re = regexp(s, "\S+_(?<trc>trc-\w+)_\S+", "names");
-            strrep(s, re.trc, opts.tag)
+            ks_mat_ = single(ks_mat_);
+            soln = this.product.selectImagingTool(img=ks_mat_);
+            soln = this.reshape_from_parc(soln);
+            soln.fileprefix = strrep(this.product.fileprefix, "_pet", "_ks");
+            this.product_ = soln;            
         end
     end
 
