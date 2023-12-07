@@ -78,12 +78,12 @@ classdef (Sealed) Huang1980Model < handle & mlkinetics.TCModel
                     toc
                 end
 
-                if any(idx == this.indicesToCheck)  
-                    h = this.solver_.plot();
+                if any(uindex(idx) == this.indicesToCheck)
+                    h = this.solver_.plot(tag="parc->"+uindex(idx));
                     saveFigure2(h, ...
-                        this.fqfp + "_" + this.stackstr() + "_uindex" + uindex(idx), ...
+                        this.product.fqfp + "_" + stackstr() + "_uindex" + uindex(idx), ...
                         closeFigure=true);
-                end                    
+                end
             end
 
             ks_mat_ = single(ks_mat_);
