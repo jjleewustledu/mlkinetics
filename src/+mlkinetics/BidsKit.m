@@ -125,6 +125,8 @@ classdef (Sealed) BidsKit < handle & mlsystem.IHandle
                 opts.bids_tags string
                 opts.bids_fqfn string
             end
+
+            opts.bids_fqfn = this.timeAppendForFqfn(opts.bids_fqfn);
             
             if ~isempty(opts.proto_raw_med)
                 this.proto_raw_med_ = opts.proto_raw_med;
@@ -159,6 +161,35 @@ classdef (Sealed) BidsKit < handle & mlsystem.IHandle
 
             % store
             this.proto_registry_(opts.bids_tags) = med;
+        end
+        function fqfn = timeAppendForFqfn(this, fqfn)
+            ic = mlfourd.ImagingContext2(fqfn);
+            ic = this.timeAppend(ic);
+            fqfn = ic.fqfn;
+            if ~isfile(fqfn)
+                ic.save();
+            end
+        end
+        function ic = timeAppend(this, ic)
+            arguments
+                this mlkinetics.BidsKit %#ok<INUSA>
+                ic mlfourd.ImagingContext2
+            end
+            if ~contains(ic.fileprefix, "-delay0") || contains(ic.fileprefix, "_timeAppend")
+                return
+            end
+
+            mg = mglob(strrep(ic.fqfn, "-delay0", "-delay*"));
+            mg = mg(~contains(mg, ic.fqfn));
+            mg = natsort(mg);
+            if isempty(mg)
+                return % nothing to time-append
+            end
+            
+            for mgi = 1:length(mg)
+                d1 = mlfourd.ImagingContext2(mg(mgi));
+                ic = ic.timeAppend(d1);
+            end
         end
     end
     
