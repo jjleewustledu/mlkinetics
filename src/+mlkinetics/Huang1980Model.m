@@ -148,10 +148,19 @@ classdef (Sealed) Huang1980Model < handle & mlkinetics.TCModel
 
         %% UTILITIES
 
-        function p = wb2plasma(this, wb, varargin)
+        function p = wb2plasma(this, wb, opts)
+            arguments
+                this mlkinetics.Huang1980Model
+                wb {mustBeNumeric}
+                opts.wb_times {mustBeNumeric} = []
+            end
+            if isempty(opts.wb_times)
+                opts.wb_times = 0:length(wb)-1;
+            end
+
             radm = this.tracer_kit_.make_handleto_counter();
             hct = this.hctFromRadMeasurements(radm);
-            p = mlraichle.RBCPartition.wb2plasma(wb, hct, this.times_sampled, "s");
+            p = mlraichle.RBCPartition.wb2plasma(wb, hct, opts.wb_times, "s");
         end
     end
 
