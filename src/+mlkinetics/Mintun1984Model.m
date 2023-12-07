@@ -168,14 +168,15 @@ classdef Mintun1984Model < handle & mlkinetics.TCModel
             f = Data.raichleks(1);
             lambda = Data.raichleks(2); 
             PS = Data.raichleks(3);
-            Delta = Data.raichleks(4);
+            Delta = 0; % Data.raichleks(4);
             v1 = Data.martinv1;
             m = 1 - exp(-PS/f);
             n = length(artery_interpolated);
             times = 0:1:n-1;
-            timesb = times; % - tBuffer;             
+            timesb = times; % - tBuffer;   
+            
             % use Delta
-            if Delta > 0.01
+            if 0.1 < Delta &&  Delta < 10
                 auc0 = trapz(artery_interpolated);
                 artery_interpolated1 = conv(artery_interpolated, exp(-Delta*times));
                 artery_interpolated1 = artery_interpolated1(1:n);

@@ -207,7 +207,7 @@ classdef (Sealed) Huang1980Model < handle & mlkinetics.TCModel
             m('k2') = struct('min', eps,  'max',  0.02,  'init', 0.0022,  'sigma', 0.0022);
             m('k3') = struct('min', eps,  'max',  0.01,  'init', 0.001,   'sigma', 0.0001);
             m('k4') = struct('min', eps,  'max',  0.001, 'init', 0.00011, 'sigma', 0.00011);
-            m('k5') = struct('min', 0.02, 'max',  1,     'init', 0.1,     'sigma', 0.05); % Delta for arterial dispersion
+            m('k5') = struct('min', 0,    'max',  0,     'init', 0,       'sigma', 0.05); % Delta for arterial dispersion
         end
         function qs   = sampled(ks, Data, artery_interpolated, times_sampled)
             %  @param artery_interpolated is uniformly sampled at high sampling freq.
@@ -225,7 +225,7 @@ classdef (Sealed) Huang1980Model < handle & mlkinetics.TCModel
             k2 = ks(2);
             k3 = ks(3);
             k4 = ks(4);
-            Delta = ks(5);
+            Delta = 0; % ks(5);
             v1 = Data.martinv1;
             scale = 1;            
             n = length(artery_interpolated);
@@ -233,11 +233,15 @@ classdef (Sealed) Huang1980Model < handle & mlkinetics.TCModel
             timesb = times; % - tBuffer;
             
             % use Delta
-            auc0 = trapz(artery_interpolated);
-            artery_interpolated1 = conv(artery_interpolated, exp(-Delta*times));
-            artery_interpolated1 = artery_interpolated1(1:n);
-            artery_interpolated1 = artery_interpolated1*auc0/trapz(artery_interpolated1);
-            
+            if 0.1 < Delta &&  Delta < 10
+                auc0 = trapz(artery_interpolated);
+                artery_interpolated1 = conv(artery_interpolated, exp(-Delta*times));
+                artery_interpolated1 = artery_interpolated1(1:n);
+                artery_interpolated1 = artery_interpolated1*auc0/trapz(artery_interpolated1);
+            else
+                artery_interpolated1 = artery_interpolated;
+            end
+
             % use k1:k4
             k234 = k2 + k3 + k4;         
             bminusa = sqrt(k234^2 - 4 * k2 * k4);

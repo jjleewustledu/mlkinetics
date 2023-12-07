@@ -201,7 +201,7 @@ classdef Raichle1983Model < handle & mlkinetics.TCModel
             f = ks(1);
             lambda = ks(2); 
             PS = ks(3);
-            Delta = ks(4);
+            Delta = 0; % ks(4);
             v1 = Data.martinv1;
             E = mlkinetics.Raichle1983Model.E(PS, f);
             n = length(artery_interpolated);
@@ -209,7 +209,7 @@ classdef Raichle1983Model < handle & mlkinetics.TCModel
             timesb = times; % - tBuffer;
              
             % use Delta
-            if Delta > 0.01
+            if 0.1 < Delta &&  Delta < 10
                 auc0 = trapz(artery_interpolated);
                 artery_interpolated1 = conv(artery_interpolated, exp(-Delta*times));
                 artery_interpolated1 = artery_interpolated1(1:n);
