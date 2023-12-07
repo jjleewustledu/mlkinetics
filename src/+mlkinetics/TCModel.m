@@ -6,7 +6,7 @@ classdef (Abstract) TCModel < handle & mlkinetics.Model
     %  Developed on Matlab 23.2.0.2380103 (R2023b) Update 1 for MACI64.  Copyright 2023 John J. Lee.
     
     properties (Abstract, Constant)
-        knames
+        ks_names
     end
 
     methods (Abstract)

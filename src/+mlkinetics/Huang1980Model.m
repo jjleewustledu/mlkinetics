@@ -11,7 +11,7 @@ classdef (Sealed) Huang1980Model < handle & mlkinetics.TCModel
     %  Developed on Matlab 9.14.0.2254940 (R2023a) Update 2 for MACI64.  Copyright 2023 John J. Lee.
         
     properties (Constant)
-        knames = {'k_1', 'k_2', 'k_3', 'k_4', '\Delta'}
+        ks_names = {'k_1', 'k_2', 'k_3', 'k_4', '\Delta'}
         LC = 0.81
     end
 
@@ -61,7 +61,7 @@ classdef (Sealed) Huang1980Model < handle & mlkinetics.TCModel
             radm = this.tracer_kit_.make_handleto_counter();
             glc = this.glcFromRadMeasurements(radm);
 
-            ks_mat_ = zeros([Nx this.LENK], 'single');
+            ks_mat_ = zeros([Nx this.LENK+1], 'single');
             for idx = 1:Nx % parcs
  
                 if idx < 10; tic; end
@@ -72,7 +72,7 @@ classdef (Sealed) Huang1980Model < handle & mlkinetics.TCModel
                     "glc", glc);
                 this.build_model(measurement = asrow(meas_img(idx, :)));
                 this.solver_ = this.solver_.solve(@mlkinetics.Huang1980Model.loss_function);
-                ks_mat_(idx, :) = asrow(this.solver_.product.ks);
+                ks_mat_(idx, :) = [asrow(this.solver_.product.ks), this.solver_.loss];
 
                 if idx < 10
                     fprintf("%s, idx->%i, uindex->%i:", stackstr(), idx, uindex(idx))

@@ -6,7 +6,7 @@ classdef Mintun1984Model < handle & mlkinetics.TCModel
     %  Developed on Matlab 9.14.0.2337262 (R2023a) Update 5 for MACI64.  Copyright 2023 John J. Lee.
     
     properties (Constant)
-        knames = {'oef', 'free', 'frac. metab. H_2O', 'v_{post} + 0.5 v_{cap}'}
+        ks_names = {'oef', 'free', 'frac. metab. H_2O', 'v_{post} + 0.5 v_{cap}'}
     end
 
     properties (Dependent)
@@ -55,7 +55,7 @@ classdef Mintun1984Model < handle & mlkinetics.TCModel
             martinv1_ic = this.reshape_to_parc(this.martinv1_ic);
             martinv1_img = double(martinv1_ic.imagingFormat.img);
 
-            ks_mat_ = zeros([Nx this.LENK]);
+            ks_mat_ = zeros([Nx, this.LENK+1]);
             for idx = 1:Nx % parcs
  
                 if idx < 10; tic; end
@@ -66,7 +66,7 @@ classdef Mintun1984Model < handle & mlkinetics.TCModel
                     "raichleks", raichleks_img(idx, :));
                 this.build_model(measurement=asrow(meas_img(idx, :)));
                 this.solver_ = this.solver_.solve(@mlkinetics.Mintun1984Model.loss_function);
-                ks_mat_(idx, :) = asrow(this.solver_.product.ks);
+                ks_mat_(idx, :) = [asrow(this.solver_.product.ks), this.solver_.loss];
 
                 if idx < 10
                     fprintf("%s, idx->%i, uindex->%i:", stackstr(), idx, uindex(idx))

@@ -6,7 +6,7 @@ classdef (Sealed) TwoTCModel < handle & mlkinetics.TCModel
     %  Developed on Matlab 23.2.0.2380103 (R2023b) Update 1 for MACI64.  Copyright 2023 John J. Lee.
     
     properties (Constant)
-        knames = {'K_1', 'k_2', 'k_3', 'k_4', '\Delta'}
+        ks_names = {'K_1', 'k_2', 'k_3', 'k_4', '\Delta'}
     end
 
     methods
@@ -44,7 +44,7 @@ classdef (Sealed) TwoTCModel < handle & mlkinetics.TCModel
             meas_ic = this.parc_kit_.make_parc(meas_ic);
             meas_img = meas_ic.imagingFormat.img;
 
-            ks_mat_ = zeros([Nx this.LENK], 'single');
+            ks_mat_ = zeros([Nx this.LENK+1], 'single');
             for idx = 1:Nx % parcs
  
                 if idx < 10; tic; end
@@ -52,7 +52,7 @@ classdef (Sealed) TwoTCModel < handle & mlkinetics.TCModel
                 % solve Huang and insert solutions into ks
                 this.build_model(measurement = asrow(meas_img(idx, :)));
                 this.solver_ = this.solver_.solve(@mlkinetics.TwoTCModel.loss_function);
-                ks_mat_(idx, :) = asrow(this.solver_.product.ks);
+                ks_mat_(idx, :) = [asrow(this.solver_.product.ks), this.solver_.loss];
 
                 if idx < 10
                     fprintf("%s, idx->%i, uindex->%i:", stackstr(), idx, uindex(idx))

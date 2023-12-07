@@ -6,7 +6,7 @@ classdef Raichle1983Model < handle & mlkinetics.TCModel
     %  Developed on Matlab 9.14.0.2254940 (R2023a) Update 2 for MACI64.  Copyright 2023 John J. Lee.
     
     properties (Constant)
-        knames = {'f', '\lambda', 'ps', '\Delta'}
+        ks_names = {'f', '\lambda', 'ps', '\Delta'}
     end
 
     properties (Dependent)
@@ -52,7 +52,7 @@ classdef Raichle1983Model < handle & mlkinetics.TCModel
             martinv1_ic = this.reshape_to_parc(this.martinv1_ic);
             martinv1_img = double(martinv1_ic.imagingFormat.img);
 
-            ks_mat_ = zeros([Nx this.LENK]);
+            ks_mat_ = zeros([Nx this.LENK+1]);
             for idx = 1:Nx % parcs
  
                 if idx < 10; tic; end
@@ -61,7 +61,7 @@ classdef Raichle1983Model < handle & mlkinetics.TCModel
                 this.Data = struct("martinv1", martinv1_img(idx));
                 this.build_model(measurement=asrow(meas_img(idx, :)));
                 this.solver_ = this.solver_.solve(@mlkinetics.Raichle1983Model.loss_function);
-                ks_mat_(idx, :) = asrow(this.solver_.product.ks);
+                ks_mat_(idx, :) = [asrow(this.solver_.product.ks), this.solver_.loss];
 
                 if idx < 10
                     fprintf("%s, idx->%i, uindex->%i:", stackstr(), idx, uindex(idx))
