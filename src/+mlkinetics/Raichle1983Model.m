@@ -80,7 +80,7 @@ classdef Raichle1983Model < handle & mlkinetics.TCModel
             ks_mat_ = single(ks_mat_);
             soln = this.product.selectImagingTool(img=ks_mat_);
             soln = this.reshape_from_parc(soln);
-            soln.fqfp = this.fqfp(tag="raichleks");
+            soln.fileprefix = strrep(this.product.fileprefix, "_pet", "_raichleks");
             this.product_ = soln;
         end
         function [k,sk] = k1(this, varargin)

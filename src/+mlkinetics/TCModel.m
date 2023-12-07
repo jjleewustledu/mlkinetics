@@ -44,7 +44,9 @@ classdef (Abstract) TCModel < handle & mlkinetics.Model
             end
             if isfield(this.data, "cbv_ic")
                 g = this.data.cbv_ic;
+                fp = g.fileprefix;
                 g = mlkinetics.OxyMetabConversion.cbvToV1(g);
+                g.fileprefix = strrep(fp, "_cbv", "_martinv1");
                 return
             end
             g = [];

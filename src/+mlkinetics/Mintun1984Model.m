@@ -83,8 +83,8 @@ classdef Mintun1984Model < handle & mlkinetics.TCModel
 
             ks_mat_ = single(ks_mat_);
             soln = this.product.selectImagingTool(img=ks_mat_);
-            soln = this.reshape_from_parc(soln);
-            soln.fqfp = this.fqfp(tag="mintunks");
+            soln = this.reshape_from_parc(soln);            
+            soln.fileprefix = strrep(this.product.fileprefix, "_pet", "_mintunks");
             this.product_ = soln;
         end
         function [k,sk] = k1(this, varargin)

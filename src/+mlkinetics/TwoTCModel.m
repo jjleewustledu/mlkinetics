@@ -69,7 +69,7 @@ classdef (Sealed) TwoTCModel < handle & mlkinetics.TCModel
             ks_mat_ = single(ks_mat_);
             soln = this.product.selectImagingTool(img=ks_mat_);
             soln = this.reshape_from_parc(soln);
-            soln.fqfp = this.fqfp(tag="huangks");
+            soln.fileprefix = strrep(this.product.fileprefix, "_pet", "_ks");
             this.product_ = soln;            
         end
         function c = chi(this, varargin)

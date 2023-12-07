@@ -37,11 +37,11 @@ classdef Martin1987Model < handle & mlkinetics.QuadraticModel
             img(img < 0) = 0;
             img(img > 100) = 100;
             
-            soln = copy(this.co_ic.imagingFormat);
-            soln.img = single(img);
-            soln.fileprefix = strrep(strrep(this.co_ic.fileprefix, "_trc-co", "_cbv"), "_trc-oc", "_cbv");
-            soln = mlfourd.ImagingContext2(soln);
-            this.product_ = soln; % fullfills mlkinetics.Model's builder design pattern
+            cbv_soln = copy(this.co_ic.imagingFormat);
+            cbv_soln.img = single(cbv_img);
+            cbv_soln.fileprefix = strrep(this.co_ic.fileprefix, "_pet", "_cbv");
+            cbv_soln = mlfourd.ImagingContext2(cbv_soln);
+            this.product_ = cbv_soln; % fullfills mlkinetics.Model's builder design pattern
         end
         function ks_ = ks(this, varargin)
             %% ks == v1, to facilitate overloading

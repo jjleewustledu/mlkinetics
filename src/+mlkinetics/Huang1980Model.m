@@ -89,7 +89,7 @@ classdef (Sealed) Huang1980Model < handle & mlkinetics.TCModel
             ks_mat_ = single(ks_mat_);
             soln = this.product.selectImagingTool(img=ks_mat_);
             soln = this.reshape_from_parc(soln);
-            soln.fqfp = this.fqfp(tag="huangks");
+            soln.fileprefix = strrep(this.product.fileprefix, "_pet", "_huangks");
             this.product_ = soln;            
         end
         function r = cmrglc(this, varargin)
