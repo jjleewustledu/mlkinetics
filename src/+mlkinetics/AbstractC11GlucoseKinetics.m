@@ -230,19 +230,19 @@ classdef AbstractC11GlucoseKinetics < mlkinetics.AbstractGlucoseKinetics
             this = mlkinetics.AbstractC11GlucoseKinetics.simulateMcmc( ...
                 this.k04, this.k12frac, this.k21, this.k32, this.k43, this.t0, this.dta, this.VB, this.times{1}, this.mapParams_, this.keysParams_);
         end   
-        function sse  = sumSquaredErrors(this, p)
+        function loss  = sumSquaredErrors(this, p)
             %% SUMSQUAREDERRORS returns the sum-of-square residuals for all cells of this.dependentData and 
             %  corresponding this.estimateDataFast.  
             
             p   = num2cell(p);
-            sse = 0;
+            loss = 0;
             edf = this.estimateDataFast(p{:});
             for iidx = 1:length(this.dependentData)
-                sse = sse + ...
+                loss = loss + ...
                       sum( (this.dependentData{iidx} - edf{iidx}).^2 );
             end
-            if (sse < 10*eps)
-                sse = sse + (1 + rand(1))*10*eps; 
+            if (loss < 10*eps)
+                loss = loss + (1 + rand(1))*10*eps; 
             end
         end
         function this = updateSummary(this)

@@ -231,23 +231,23 @@ classdef AbstractO15Kinetics < mlkinetics.AbstractKinetics
         function this = simulateItsMcmc(this)
             this = mlkinetics.AbstractO15Kinetics.simulateMcmc(this.mapParams, this.keysParams_);
         end 
-        function sse  = sumSquaredErrors(this, p)
+        function loss = sumSquaredErrors(this, p)
             %% SUMSQUAREDERRORS returns \int_{t \in T} dt for all cells of this.dependentData and 
             %  corresponding this.model{:}.  
             
             p     = num2cell(p);
-            sse   = 0;
+            loss   = 0;
             mdl   = this.itsModel(p{:});
             intDD = [];
             len   = length(this.dependentData);
             for iidx = 1:len % depen. data are aifSampled; aifCircleWillis; scannerRoi
                 intDD = trapz(this.independentData{iidx}, this.dependentData{iidx});
-                sse = sse + ...
+                loss = loss + ...
                         trapz(this.independentData{iidx}, this.dependentData{iidx} - mdl{iidx}).^2 / intDD^2;
             end
-            sse   = sse + (intDD - mdl{len+1})^2 / intDD^2; % intDD := \int_{t \in T} dt scannerRoi(t)
-            if (sse < 10*eps)
-                sse = sse + (1 + rand(1))*10*eps; 
+            loss   = loss + (intDD - mdl{len+1})^2 / intDD^2; % intDD := \int_{t \in T} dt scannerRoi(t)
+            if (loss < 10*eps)
+                loss = loss + (1 + rand(1))*10*eps; 
             end
         end
         
