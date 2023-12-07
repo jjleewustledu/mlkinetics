@@ -160,6 +160,10 @@ classdef (Abstract) ScannerKit < handle & mlsystem.IHandle
             end
             copts = namedargs2cell(opts);
 
+            if any(contains(opts.scanner_tags, "nifti", IgnoreCase=true))
+                this = mlkinetics.NiftiScannerKit.instance(copts{:});
+                return
+            end
             if any(contains(opts.scanner_tags, "vision", IgnoreCase=true))
                 this = mlsiemens.BiographVisionKit2.instance(copts{:});
                 return
