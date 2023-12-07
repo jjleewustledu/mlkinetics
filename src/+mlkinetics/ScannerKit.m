@@ -93,10 +93,13 @@ classdef (Abstract) ScannerKit < handle & mlsystem.IHandle
             end
             med_ = this.bids_kit_.make_bids_med();
             ic_ = med_.imagingContext;
-            fp_ = ic_.fqfileprefix;
+            fp_ = ic_.fileprefix;
             if ~contains(fp_, stackstr(3, use_dashes=true))
                 fp_ = mlpipeline.Bids.adjust_fileprefix( ...
                     ic_.fileprefix, post_proc=stackstr(3, use_dashes=true));
+            end
+            if ~contains(fp_, "_pet")
+                fp_ = strcat(fp_, "_pet");
             end
             ic = measurement_ic;
             ic.fileprefix = fp_;
