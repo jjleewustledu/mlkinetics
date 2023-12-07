@@ -71,7 +71,7 @@ classdef Raichle1983Model < handle & mlkinetics.TCModel
                 if any(uindex(idx) == this.indicesToCheck)  
                     h = this.solver_.plot(tag="parc->"+uindex(idx));
                     saveFigure2(h, ...
-                        this.fqfp + "_" + stackstr() + "_uindex" + uindex(idx), ...
+                        this.product.fqfp + "_" + stackstr() + "_uindex" + uindex(idx), ...
                         closeFigure=true);
                 end                    
             end
@@ -96,8 +96,8 @@ classdef Raichle1983Model < handle & mlkinetics.TCModel
             [k,sk] = k4(this.solver_, varargin{:});
         end
         function [k,sk] = ks(this, varargin)
-            k = zeros(1,3);
-            sk = zeros(1,3);
+            k = zeros(1,4);
+            sk = zeros(1,4);
             [k(1),sk(1)] = k1(this.solver_, varargin{:});
             [k(2),sk(2)] = k2(this.solver_, varargin{:});
             [k(3),sk(3)] = k3(this.solver_, varargin{:});
@@ -175,10 +175,10 @@ classdef Raichle1983Model < handle & mlkinetics.TCModel
             %  lambda described in Table 2
             
             m = containers.Map;
-            m('k1') = struct('min', 0.0022, 'max',  0.0171, 'init', 0.00777, 'sigma', 3.89e-4); % f / s, max ~ 0.0155
-            m('k2') = struct('min', 0.608,  'max',  1.06,   'init', 0.945,   'sigma', 0.05); % lambda in mL/mL
-            m('k3') = struct('min', 0.0081, 'max',  0.0293, 'init', 0.0228,  'sigma', 0.002); % PS / s, max ~ 0.0266
-            m('k4') = struct('min', 0,      'max',  1,      'init', 0,       'sigma', 0.1); % Delta for cerebral dispersion
+            m('k1') = struct('min', 0.0022, 'max', 0.0171, 'init', 0.00777, 'sigma', 3.89e-4); % f / s, max ~ 0.0155
+            m('k2') = struct('min', 0.608,  'max', 1.06,   'init', 0.945,   'sigma', 0.05); % lambda in mL/mL
+            m('k3') = struct('min', 0.0081, 'max', 0.0293, 'init', 0.0228,  'sigma', 0.002); % PS / s, max ~ 0.0266
+            m('k4') = struct('min', 0,      'max', 0,      'init', 0,       'sigma', 0.1); % Delta for cerebral dispersion
         end
         function qs = sampled(ks, Data, artery_interpolated, times_sampled)
             %  @param artery_interpolated is uniformly sampled at high sampling freq.

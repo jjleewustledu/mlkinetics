@@ -46,7 +46,26 @@ classdef (Sealed) ParcWmparc < handle & mlkinetics.Parc
             end
             
             % limited indices for checking
-            idx = [1 7:13 16:20 24 26:28 1000 2000 3000 4000 5001 5002 6000];
+            % 1 -> left cerebral exterior
+            % 7 -> left cerebellum wm
+            % 8 -> left cerebellum cortex
+            % 10 -> left thalamus
+            % 11 -> left caudate
+            % 12 -> left putamen
+            % 13 -> left pallidum
+            % 16 -> brainstem
+            % 17 -> left hippo
+            % 18 -> left amygdala
+            % 19 -> left insula
+            % 20 -> left operculum
+            % 1025 -> ctx lh precuneus
+            % 2025 -> ctx rh precuneus
+            % 3025 -> wm lh precuneus
+            % 4025 -> wm rh precuneus
+            % 5001 -> left unsegmented wm
+            % 5002 -> right unsegmented wm
+
+            idx = [1 7:13 16:20 24 26:28 1025 2000 3000 4000 5001 5002 6000];
         end
         function ic = reshape_from_parc(this, ic1)
             %% ndims(ic1) == 2 => ndims(ic) == 4, inverse of reshape_to_parc

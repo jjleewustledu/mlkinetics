@@ -9,12 +9,11 @@ classdef (Abstract) TCModel < handle & mlkinetics.Model
         ks_names
     end
 
-    methods (Abstract)
-        sampled(this)
+    methods (Abstract, Static)
+        sampled
     end
 
     properties
-        Data
         LENK
         map
     end

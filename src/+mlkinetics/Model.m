@@ -7,12 +7,14 @@ classdef (Abstract) Model < handle & mlsystem.IHandle
     %  Created 13-Jun-2023 22:58:44 by jjlee in repository /Users/jjlee/MATLAB-Drive/mlkinetics/src/+mlkinetics.
     %  Developed on Matlab 9.14.0.2254940 (R2023a) Update 2 for MACI64.  Copyright 2023 John J. Lee.
     
-    methods (Abstract, Static)
-        create()
-    end
-
     methods (Abstract)
         build_solution(this)
+    end
+
+    methods (Abstract, Static)
+        create()
+        sampled(ks, Data, artery_interpolated, times_sampled) 
+        % artery_interpolated has uniform sampling; times_sampled may be non-uniform
     end
 
     %% Shared Implementations
@@ -35,12 +37,12 @@ classdef (Abstract) Model < handle & mlsystem.IHandle
 
         %% lazy initialization by mixTacAif()
 
-        measurement % numeric representation expected by solvers
-        times_sampled
-        t0
         artery_interpolated
-        Dt
         datetimePeak
+        Dt
+        measurement % numeric representation expected by solvers
+        t0
+        times_sampled
     end
 
     methods %% GET
@@ -481,7 +483,7 @@ classdef (Abstract) Model < handle & mlsystem.IHandle
                 opts.model_tags {mustBeText}
             end
             copts = namedargs2cell(opts);
-            this.initialize(copts{:});
+            this.initialize(copts{:}); % for abstract factories (kits)
 
             [this.measurement_,this.times_sampled_,this.t0_,this.artery_interpolated_] = this.mixTacAif();        
             this.set_artery_interpolated(this.artery_interpolated_);
