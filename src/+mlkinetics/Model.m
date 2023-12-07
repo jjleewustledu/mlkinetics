@@ -17,9 +17,13 @@ classdef (Abstract) Model < handle & mlsystem.IHandle
 
     %% Shared Implementations
 
+    properties
+        Data % struct of ancillary data shared with solver
+    end
+
     properties (Dependent)
         bids_med % from BidsKit
-        data % struct of ancillary data used by model
+        data % struct of ancillary data provided by ModelKit
         dlicv_ic % coregistered to dynamic PET
         input_func % from InputFuncKit
         mgdL_to_mmolL % [mg/dL] * mgdL_to_mmolL -> [mmol/L]
@@ -97,7 +101,7 @@ classdef (Abstract) Model < handle & mlsystem.IHandle
         end
         function g = get.mgdL_to_mmolL(this)
             if isfield(this.data, "mgdL_to_mmolL")
-                g = this.data.this.mgdL_to_mmolL_;
+                g = this.data.mgdL_to_mmolL_;
                 return
             end
             if isfield(this.data, "molecular_weight")

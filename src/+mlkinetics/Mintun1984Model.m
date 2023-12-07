@@ -18,28 +18,28 @@ classdef Mintun1984Model < handle & mlkinetics.TCModel
     methods
         function this = build_model(this, opts)
             arguments
-                this mlkinetics.Raichle1983Model
+                this mlkinetics.Mintun1984Model
                 opts.map containers.Map = this.preferredMap()
                 opts.measurement {mustBeNumeric} = []
                 opts.solver_tags = "simulanneal"
             end    
 
-            Data = struct("raichleks",  opts.ks, "martinv1", opts.v1);
             this.map = opts.map;
             if ~isempty(opts.measurement)
                 this.measurement_ = opts.measurement;
             end
             if contains(opts.solver_tags, "simulanneal")
-                this.solver_ = mloxygen.Mintun1984SimulAnneal(context=this, Data=Data);
+                this.solver_ = mloxygen.Mintun1984SimulAnneal(context=this);
             end
             if contains(opts.solver_tags, "multinest")
-                this.solver_ = mloxygen.Mintun1984MultiNest(context=this, Data=Data);
+                this.solver_ = mloxygen.Mintun1984MultiNest(context=this);
             end
             if contains(opts.solver_tags, "skilling-nest")
-                this.solver_ = mloxygen.Mintun1984Nest(context=this, Data=Data);
+                this.solver_ = mloxygen.Mintun1984Nest(context=this);
             end
         end
-        function soln = build_solution(this)%% MAKE_SOLUTION
+        function soln = build_solution(this)
+            %% MAKE_SOLUTION
             %  @return ks_ in R^1 as mlfourd.ImagingContext2, without saving to filesystems.  
 
             uindex = this.unique_indices;
@@ -76,7 +76,7 @@ classdef Mintun1984Model < handle & mlkinetics.TCModel
                 if any(uindex(idx) == this.indicesToCheck)  
                     h = this.solver_.plot(tag="parc->"+uindex(idx));
                     saveFigure2(h, ...
-                        this.fqfp + "_" + stackstr() + "_uindex" + uindex(idx), ...
+                        this.product.fqfp + "_" + stackstr() + "_uindex" + uindex(idx), ...
                         closeFigure=true);
                 end                    
             end

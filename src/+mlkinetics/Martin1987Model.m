@@ -21,7 +21,7 @@ classdef Martin1987Model < handle & mlkinetics.QuadraticModel
     end
 
     methods
-        function soln = build_solution(this, varargin)
+        function [cbv_soln,v1_soln] = build_solution(this, varargin)
 
             % check dynamic imaging
 
@@ -32,10 +32,10 @@ classdef Martin1987Model < handle & mlkinetics.QuadraticModel
             integralAif = trapz(this.artery_interpolated_(this.t0+1:this.tF+1));
             c1 = mlkinetics.OxyMetabConversion.RATIO_SMALL_LARGE_HCT;
             c2 = mlkinetics.OxyMetabConversion.DENSITY_BRAIN;
-            img = obsPet/(c1*c2*integralAif);
-            img = mlkinetics.OxyMetabConversion.v1ToCbv(img);
-            img(img < 0) = 0;
-            img(img > 100) = 100;
+            v1_img = obsPet/(c1*c2*integralAif);
+            v1_img(v1_img < 0) = 0;
+            v1_img(v1_img > 1) = 1;
+            cbv_img = mlkinetics.OxyMetabConversion.v1ToCbv(v1_img);
             
             cbv_soln = copy(this.co_ic.imagingFormat);
             cbv_soln.img = single(cbv_img);
