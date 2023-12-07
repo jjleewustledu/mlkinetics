@@ -155,11 +155,27 @@ classdef Test_InputFuncKit < matlab.unittest.TestCase
                 input_func_tags="twilite", ...
                 input_func_fqfn=crv_fqfn);
 
+ 
             disp(ifk.do_make_device())
             ifk.do_make_activity_density();
             ifk.do_make_plot();
         end
         function test_caprac_kit(this)
+        end
+        function test_ensureNumericTimingData(this)
+            fqfn = fullfile(getenv("SINGULARITY_HOME"), ...
+                "CCIR_01211", "derivatives", "sub-108293", "ses-20210421154248", "pet", ...
+                "sub-108293_ses-20210421154248_trc-oo_proc-delay0-BrainMoCo2-createNiftiMovingAvgFrames-ScannerKit-do-make-activity-density_timeAppend-4_pet_MipIdif_build_aif.nii.gz");
+            this.assertTrue(isfile(fqfn));
+            ic = mlfourd.ImagingContext2(fqfn);
+            ic = mlpipeline.ImagingMediator.ensureFiniteImagingContext(ic);
+            this.assertTrue(contains(ic.fileprefix, "finite"))
+            ic.save();
+            
+            this.assertTrue(isnumeric(ic.json_metadata.starts))
+            this.assertTrue(isnumeric(ic.json_metadata.taus))
+            this.assertTrue(isnumeric(ic.json_metadata.times))
+            this.assertTrue(isnumeric(ic.json_metadata.timesMid))
         end
         function test_mipidif_kit_plot(this)
             bids_fqfn = fullfile(getenv("HOME"), ...
