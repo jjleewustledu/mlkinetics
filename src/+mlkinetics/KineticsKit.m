@@ -56,6 +56,10 @@ classdef (Abstract) KineticsKit < handle & mlsystem.IHandle
             %% from InputFuncKit         
             m = this.input_func_kit_.do_make_count_rate(varargin{:});
         end
+        function m = do_make_input_func(this, varargin)
+            %% from InputFuncKit         
+            m = this.input_func_kit_.do_make_input_func(varargin{:});
+        end
         function m = make_parc(this, varargin)
             %% from ParcKit
             m = this.parc_kit_.make_parc(varargin{:});
