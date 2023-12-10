@@ -88,7 +88,55 @@ classdef (Abstract) InputFuncKit < handle & mlsystem.IHandle
         
         %% convenience create-methods for clients
 
+        function this = create_from_tags(opts)
+            %% Creates InputFuncKit instance from tags and input func. specifiers.
+            % Args:
+            % opts.bids_fqfn {mustBeFile}
+            % opts.bids_tags {mustBeTextScalar}
+            % opts.ref_source_props = datetime(2022,2,1, TimeZone="local")
+            % opts.counter_tags {mustBeTextScalar} = "caprac"
+            % opts.scanner_tags {mustBeTextScalar}
+            % opts.input_func_tags {mustBeTextScalar}
+            % opts.input_func_fqfn {mustBeTextScalar} = ""       
+
+            arguments
+                opts.bids_fqfn {mustBeFile}
+                opts.bids_tags {mustBeTextScalar}
+                opts.ref_source_props = datetime(2022,2,1, TimeZone="local")
+                opts.counter_tags {mustBeTextScalar} = "caprac"
+                opts.scanner_tags {mustBeTextScalar}
+                opts.input_func_tags {mustBeTextScalar}
+                opts.input_func_fqfn {mustBeTextScalar} = ""
+            end
+
+            bk = mlkinetics.BidsKit.create( ...
+                bids_fqfn=opts.bids_fqfn, ...
+                bids_tags=opts.bids_tags);            
+            tk = mlkinetics.TracerKit.create( ...
+                bids_kit=bk, ...
+                ref_source_props=opts.ref_source_props, ...
+                counter_tags=opts.counter_tags);
+            sk = mlkinetics.ScannerKit.create( ...
+                bids_kit=bk, ...
+                tracer_kit=tk, ...
+                scanner_tags=opts.scanner_tags);
+            this = mlkinetics.InputFuncKit.create( ...
+                bids_kit=bk, ...
+                tracer_kit=tk, ...
+                scanner_kit=sk, ...
+                input_func_tags=opts.input_func_tags, ...
+                input_func_fqfn=opts.input_func_fqfn);
+        end
         function this = create(opts)
+            %% Creates InputFuncKit instance from existing kits and input func. specifiers. 
+            % Args:
+            % opts.bids_kit mlkinetics.BidsKit {mustBeNonempty}
+            % opts.tracer_kit mlkinetics.TracerKit {mustBeNonempty}
+            % opts.scanner_kit mlkinetics.ScannerKit {mustBeNonempty}
+            % opts.input_func_tags string
+            % opts.input_func_fqfn string
+            % opts.recovery_coeff double = 1            
+
             arguments
                 opts.bids_kit mlkinetics.BidsKit {mustBeNonempty}
                 opts.tracer_kit mlkinetics.TracerKit {mustBeNonempty}
