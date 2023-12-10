@@ -92,6 +92,9 @@ classdef (Sealed) BidsKit < handle & mlsystem.IHandle
 
             assert(~isempty(this.proto_registry_.keys))
         end
+
+        %% UTILITIES
+        
     end
 
     %% PROTECTED

@@ -121,9 +121,12 @@ classdef (Sealed) TracerKit < handle & mlsystem.IHandle
             if ~isempty(opts.ref_source_props)
                 this.proto_ref_source_ = mlpet.ReferenceSource.create(opts.ref_source_props);
             end
-            if ~isemptytext(opts.tracer_tags)
-                this.proto_radionuclides_ = mlpet.Radionuclides(opts.tracer_tags);
+            if isemptytext(opts.tracer_tags)
+                med = opts.bids_kit.make_bids_med();
+                rn = mlpet.Radionuclides(med.tracer);
+                opts.tracer_tags = rn.isotope;
             end
+            this.proto_radionuclides_ = mlpet.Radionuclides(opts.tracer_tags);
 
             cnt = [];
             if contains(opts.counter_tags, "caprac", IgnoreCase=true)

@@ -25,7 +25,8 @@ classdef (Sealed) MipIdifKit < handle & mlkinetics.IdifKit
                 opts.use_cache logical = false
                 opts.pet_avgt = []
                 opts.pet_mipt = []
-                opts.steps logical = true(1,4)
+                opts.steps logical = true(1,5)
+                opts.delete_large_files logical = true;
             end
 
             if ~isempty(this.input_func_ic_)
@@ -39,7 +40,7 @@ classdef (Sealed) MipIdifKit < handle & mlkinetics.IdifKit
                 scanner_kit=this.scanner_kit_, ...
                 pet_avgt=opts.pet_avgt, ...
                 pet_mipt=opts.pet_mipt);
-            idif_ic = mipidif.build_all(steps=opts.steps);
+            idif_ic = mipidif.build_all(steps=opts.steps, delete_large_files=opts.delete_large_files);
             idif_ic = idif_ic*this.recovery_coeff;
             idif_ic.addJsonMetadata(opts);
             this.input_func_ic_ = idif_ic;
