@@ -37,7 +37,7 @@ classdef (Sealed) ModelKit < handle & mlsystem.IHandle
                 opts.input_func_kit = []            
                 opts.representation_kit = []              
                 opts.parc_kit = []
-                opts.data struct = struct([])
+                opts.data struct = struct()
                 opts.model_tags {mustBeText} = this.proto_registry_.keys
             end
             opts.model_tags = string(ensurecell1(opts.model_tags));
@@ -152,7 +152,7 @@ classdef (Sealed) ModelKit < handle & mlsystem.IHandle
                 opts.input_func_kit = []                
                 opts.representation_kit = []
                 opts.parc_kit = []
-                opts.data struct = struct([])
+                opts.data struct = struct()
                 opts.model_tags {mustBeTextScalar}
             end
 

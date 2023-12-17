@@ -117,7 +117,7 @@ classdef (Abstract) KineticsKit < handle & mlsystem.IHandle
         end
         function ga = do_make_ga(~, varargin)
             %% ga ~ graphical analysis results ~ struct
-            ga = struct([]);
+            ga = struct();
         end
     end
 
@@ -138,7 +138,7 @@ classdef (Abstract) KineticsKit < handle & mlsystem.IHandle
                 opts.recovery_coeff double = 1
                 opts.representation_tags {mustBeText}
                 opts.parc_tags {mustBeText}
-                opts.data struct = struct([])
+                opts.data struct = struct()
                 opts.model_tags {mustBeText}
             end
             copts = namedargs2cell(opts);
@@ -227,7 +227,7 @@ classdef (Abstract) KineticsKit < handle & mlsystem.IHandle
                 this mlkinetics.KineticsKit
                 opts.bids_tags {mustBeText} = ""
                 opts.bids_fqfn {mustBeFile}
-                opts.ref_source_props = struct([])
+                opts.ref_source_props = struct()
                 opts.tracer_tags {mustBeText} = ""
                 opts.counter_tags {mustBeText} = ""
                 opts.scanner_tags {mustBeText} = ""
@@ -235,7 +235,7 @@ classdef (Abstract) KineticsKit < handle & mlsystem.IHandle
                 opts.input_func_fqfn {mustBeText} = ""
                 opts.representation_tags {mustBeText} = "native"
                 opts.parc_tags {mustBeText} = "voxels"
-                opts.data struct = struct([])
+                opts.data struct = struct()
                 opts.model_tags {mustBeText} = ""
                 opts.recovery_coeff double = 1
             end
