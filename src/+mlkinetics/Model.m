@@ -99,7 +99,7 @@ classdef (Abstract) Model < handle & mlsystem.IHandle
                 return
             end
             g = mixTacAif(this);
-            his.measurement_ = g;
+            this.measurement_ = g;
         end
         function g = get.mgdL_to_mmolL(this)
             if isfield(this.data, "mgdL_to_mmolL")
@@ -209,7 +209,7 @@ classdef (Abstract) Model < handle & mlsystem.IHandle
                 opts.input_func_kit = []            
                 opts.representation_kit = []              
                 opts.parc_kit = []
-                opts.data struct = struct([])
+                opts.data struct = struct()
                 opts.model_tags = []
             end
 
