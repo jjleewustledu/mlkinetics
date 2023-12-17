@@ -194,7 +194,8 @@ classdef (Sealed) Huang1980Model < handle & mlkinetics.TCModel
             import mlkinetics.Huang1980Model.sampled            
             estimation  = sampled(ks, Data, artery_interpolated, times_sampled);
             measurement = measurement(1:length(estimation));
-            positive    = measurement > 0.05*max(measurement); % & times_sampled < timeCliff;
+            measurement = measurement/max(measurement);
+            positive    = measurement > 0.05; % & times_sampled < timeCliff;
             eoverm      = estimation(positive)./measurement(positive);            
             Q           = mean(abs(1 - eoverm));
             %Q           = sum((1 - eoverm).^2);
