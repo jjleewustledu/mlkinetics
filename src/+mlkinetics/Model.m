@@ -278,7 +278,17 @@ classdef (Abstract) Model < handle & mlsystem.IHandle
                     Dt = 0;
                     [~,idxPeak] = max(artery_interpolated);
                     dev = this.scanner_kit_.do_make_device();
-                    datetimePeak = dev.datetime0 + seconds(idxPeak-1);                    
+                    datetimePeak = dev.datetime0 + seconds(idxPeak-1);  
+                case 'double' % empty
+                    measurement = this.measurement_;
+                    times_sampled = this.times_sampled_;
+                    t0 = 0;
+                    artery_interpolated = this.artery_interpolated_;
+                    Dt = 0;
+                    datetimePeak = NaN;
+                    fprintf(stackstr()+":")
+                    toc
+                    return
                 otherwise
                     error("mlkinetics:ValueError", "%s: unknown class %s", ...
                         stackstr(), class(this.input_func_kit_))
@@ -473,13 +483,13 @@ classdef (Abstract) Model < handle & mlsystem.IHandle
         end
         function this = Model(opts)
             arguments
-                opts.bids_kit mlkinetics.BidsKit {mustBeNonempty} % prototype
-                opts.tracer_kit mlkinetics.TracerKit {mustBeNonempty} % prototype
-                opts.scanner_kit mlkinetics.ScannerKit {mustBeNonempty} % singleton
-                opts.input_func_kit mlkinetics.InputFuncKit {mustBeNonempty} % singleton
+                opts.bids_kit = [] % prototype
+                opts.tracer_kit = [] % prototype
+                opts.scanner_kit = [] % singleton
+                opts.input_func_kit = [] % singleton
                 opts.representation_kit = [] % mlkinetics.RepresentationKit {mustBeNonempty} % prototype
                 opts.parc_kit = [] % mlkinetics.ParcKit {mustBeNonempty} % prototype
-                opts.data struct 
+                opts.data struct = struct()
                 opts.model_tags {mustBeText}
             end
             copts = namedargs2cell(opts);
