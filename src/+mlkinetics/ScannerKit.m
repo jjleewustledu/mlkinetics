@@ -190,134 +190,6 @@ classdef (Abstract) ScannerKit < handle & mlsystem.IHandle
 
         %% utilities
 
-        function [arterialDev,arterialDatetimePeak] = alignArterialToScanner(varargin)
-            %% ALIGNARTERIALTOSCANNER
-            %  @param required arterialDev is counting device or arterial sampling device, as mlpet.AbstractDevice.
-            %  @param required scannerlDev is mlpet.AbstractDevice.
-            %  @param sameWorldline is logical.  Set true to avoid worldline shifts between arterial & scanner data.
-            %  @return arterialDev, modified if not sameWorldline;
-            %  @return arterialDatetimePeak, updated with alignments.
-            %  @return arterialDev.Dt, always updated.
-            %  @return updates mlraichle.StudyRegistry.tBuffer.
-            
-            ip = inputParser;
-            addRequired(ip, 'arterialDev', @(x) isa(x, 'mlpet.AbstractDevice'))
-            addRequired(ip, 'scannerDev', @(x) isa(x, 'mlpet.AbstractDevice'))
-            addParameter(ip, 'sameWorldline', false, @islogical)
-            parse(ip, varargin{:})
-            ipr = ip.Results;            
-            ad = mlaif.AifData.instance();
-            arterialDev = copy(ipr.arterialDev);
-            scannerDev = ipr.scannerDev;
-
-            % find Dt of carotid bolus from radial-artery bolus, unresolved frames-of-reference
-            unifTimes = 0:max(arterialDev.timeWindow, scannerDev.timesMid(end));
-            arterialDevTimes = arterialDev.times(arterialDev.index0:arterialDev.indexF) - arterialDev.time0;
-            arterialAct = interp1(arterialDevTimes, ...
-                                 arterialDev.activityDensity(), ...
-                                 unifTimes);
-            scannerAct = interp1(scannerDev.timesMid, ...
-                                single(scannerDev.activityDensity('volumeAveraged', true)), ...
-                                unifTimes);
-            dscannerAct = movmean(diff(scannerAct), 9);
-            if ~isempty(getenv('DEBUG'))
-                figure; plot(unifTimes(1:end-1), diff(scannerAct));
-                hold on
-                plot(unifTimes(1:end-1), dscannerAct);
-                hold off
-                ylabel('activity density (Bq/mL)')
-                title(stackstr())
-            end
-
-            thresh = 0.9; %arterialDev.threshOfPeak;
-            [~,idxScanner] = max(dscannerAct > thresh*max(dscannerAct));
-            [~,idxArterial] = max(arterialAct > thresh*max(arterialAct));
-            tArterial = seconds(unifTimes(idxArterial));
-            tScanner = seconds(unifTimes(idxScanner));
-            
-            % manage failures of interp1()
-            if tArterial > seconds(0.5*scannerDev.timeWindow)
-                warning('mlkinetics:ValueError', ...
-                    '%s.tArterial was %g but arterialDev.timeWindow was %g.\n', ...
-                    stackstr(), seconds(tArterial), arterialDev.timeWindow)
-                ad.stableToInterpolation = false;
-                [~,idxArterial] = max(arterialDev.activityDensity() > thresh*max(arterialDev.activityDensity()));
-                tArterial = seconds(arterialDevTimes(idxArterial));
-                fprintf('tArterial forced-> %g\n', seconds(tArterial))
-            end            
-            if tArterial > seconds(0.5*scannerDev.timeWindow) %%% UNRECOVERABLE
-                error('mlkinetics:ValueError', ...
-                    '%s.tArterial was %g but arterialDev.timeWindow was %g.', ...
-                    stackstr(), seconds(tArterial), arterialDev.timeWindow)
-            end
-            if tScanner > seconds(0.75*scannerDev.timeWindow)
-                warning('mlkinetics:ValueError', ...
-                    '%s.tScanner was %g but scannerDev.timeWindow was %g.\n', ...
-                    stackstr(), seconds(tScanner), scannerDev.timeWindow)
-                ad.stableToInterpolation = false;
-                scannerDevAD = scannerDev.activityDensity('volumeAveraged', true, 'diff', true);
-                [~,idxScanner] = max(scannerDevAD > thresh*max(scannerDevAD));
-                tScanner = seconds(scannerDev.timesMid(idxScanner));
-                fprintf('tScanner forced -> %g\n', seconds(tScanner))
-            end
-            if tScanner > seconds(0.75*scannerDev.timeWindow) %%% UNRECOVERABLE
-                error('mlkinetics:ValueError', ...
-                    '%s.tScanner was %g but scannerDev.timeWindow was %g.', ...
-                    stackstr(), seconds(tScanner), scannerDev.timeWindow)
-            end
-            
-            % resolve frames-of-reference, ignoring delay of radial artery from carotid
-            Dbolus = scannerDev.datetime0 + tScanner - (arterialDev.datetime0 + tArterial);
-            arterialDev.datetimeMeasured = -seconds(arterialDev.time0) + scannerDev.datetime0 + ...
-                                            tScanner - ...
-                                            tArterial - ...
-                                            Dbolus;
-                                        
-            % manage failures of Dbolus
-            if Dbolus > seconds(15)
-                warning('mlkinetics:ValueError', ...
-                    '%s.Dbolus was %g.\n', stackstr(), seconds(Dbolus))
-                fprintf('scannerDev.datetime0 was %s.\n', datestr(scannerDev.datetime0))
-                fprintf('tScanner was %g.\n', seconds(tScanner))
-                fprintf('arterialDev.datetime0 was %s.\n', datestr(arterialDev.datetime0))
-                fprintf('tArterial was %g.\n', seconds(tArterial))
-                Dbolus = seconds(15);
-                arterialDev.datetimeMeasured = -seconds(arterialDev.time0) + scannerDev.datetime0 + ...
-                                                tScanner - ...
-                                                tArterial - ...
-                                                Dbolus;
-                fprintf('Dbolus forced -> %g\n', seconds(Dbolus))
-                fprintf('arterialDev.datetimeMeasured forced -> %s\n', ...
-                        datestr(arterialDev.datetimeMeasured))
-            end
-            if abs(Dbolus) > seconds(0.5*scannerDev.timeWindow) %%% UNRECOVERABLE
-                error('mlkinetics:ValueError', ...
-                    '%s.Dbolus was %g but scannerDev.timeWindow was %g.', ...
-                    stackstr(), seconds(Dbolus), scannerDev.timeWindow)
-                %Dbolus = seconds(0);
-                %arterialDev.datetimeMeasured = -seconds(arterialDev.time0) + scannerDev.datetime0;
-                %warning('mlkinetics:ValueError', ...
-                %        'BiographKit.alignArterialToScanner.Dbolus forced -> %g', seconds(Dbolus))
-                %warning('mlkinetics:ValueError', ...
-                %        'BiographKit.alignArterialToScanner.arterialDev.datetimeMeasured forced -> %s', ...
-                %        datestr(arterialDev.datetimeMeasured))
-            end
-                                        
-            % adjust arterialDev worldline to describe carotid bolus
-            if ipr.sameWorldline
-                arterialDev.datetimeMeasured = arterialDev.datetimeMeasured + Dbolus;
-            else
-                arterialDev.shiftWorldlines(seconds(Dbolus));
-            end
-            arterialDev.Dt = seconds(Dbolus);
-            arterialDatetimePeak = arterialDev.datetime0 + tArterial;
-            
-            % tBuffer
-            ad.Ddatetime0 = seconds(scannerDev.datetime0 - arterialDev.datetime0);
-
-            % synchronize decay correction times
-            arterialDev.datetimeForDecayCorrection = scannerDev.datetimeForDecayCorrection;            
-        end        
         function mixed = mixImagingContexts(obj, obj2, f, varargin)
             %  Args:
             %      obj is understood by mlfourd.ImagingContext2
@@ -352,10 +224,10 @@ classdef (Abstract) ScannerKit < handle & mlsystem.IHandle
             
             ip = inputParser;
             ip.KeepUnmatched = true;
-            addParameter(ip, 'scanner', [], @(x) isa(x, 'mlpet.AbstractDevice'))
-            addParameter(ip, 'scanner2', [], @(x) isa(x, 'mlpet.AbstractDevice'))
-            addParameter(ip, 'arterial', [], @(x) isa(x, 'mlpet.AbstractDevice'))
-            addParameter(ip, 'arterial2', [], @(x) isa(x, 'mlpet.AbstractDevice'))
+            addParameter(ip, 'scanner', [], @(x) isa(x, 'mlpet.ScannerDevice'))
+            addParameter(ip, 'scanner2', [], @(x) isa(x, 'mlpet.ScannerDevice'))
+            addParameter(ip, 'arterial', [], @(x) isa(x, 'mlpet.InputFuncDevice'))
+            addParameter(ip, 'arterial2', [], @(x) isa(x, 'mlpet.InputFuncDevice'))
             addParameter(ip, 'roi', [], @(x) isa(x, 'mlfourd.ImagingContext2'))
             addParameter(ip, 'roi2', [], @(x) isa(x, 'mlfourd.ImagingContext2'))
             addParameter(ip, 'DtMixing', 0, @isscalar)
@@ -449,7 +321,7 @@ classdef (Abstract) ScannerKit < handle & mlsystem.IHandle
             % arterialDevs calibrate & align arterial times-series to localized scanner time-series  
             ifk = ipr.input_func_kit;
             a0 = ifk.do_make_device();
-            [a, datetimePeak] = mlkinetics.ScannerKit.alignArterialToScanner( ...
+            [a, datetimePeak] = a0.alignArterialToReference( ...
                 a0, s, 'sameWorldline', false);
             aif = a.activityDensity(Nt=Nt);
             switch class(a)
@@ -484,8 +356,8 @@ classdef (Abstract) ScannerKit < handle & mlsystem.IHandle
             ip = inputParser;
             ip.KeepUnmatched = true;
             addRequired(ip, 'devkit', @(x) isa(x, 'mlkinetics.ScannerKit'))
-            addParameter(ip, 'scanner', [], @(x) isa(x, 'mlpet.AbstractDevice'))
-            addParameter(ip, 'arterial', [], @(x) isa(x, 'mlpet.AbstractDevice'))
+            addParameter(ip, 'scanner', [], @(x) isa(x, 'mlpet.ScannerDevice'))
+            addParameter(ip, 'arterial', [], @(x) isa(x, 'mlpet.InputFuncDevice'))
             addParameter(ip, 'roi', [], @(x) isa(x, 'mlfourd.ImagingContext2'))
             parse(ip, devkit, varargin{:})
             ipr = ip.Results;      
@@ -508,7 +380,7 @@ classdef (Abstract) ScannerKit < handle & mlsystem.IHandle
             
             % arterialDevs calibrate & align arterial times-series to localized scanner time-series            
             a0 = ipr.arterial;
-            [a, datetimePeak] = devkit.alignArterialToScanner( ...
+            [a, datetimePeak] = a0.alignArterialToReference( ...
                 a0, s, 'sameWorldline', false);
             aif = a.activityDensity(Nt=Nt);
             switch class(a)
@@ -536,8 +408,8 @@ classdef (Abstract) ScannerKit < handle & mlsystem.IHandle
             ip = inputParser;
             ip.KeepUnmatched = true;
             addRequired(ip, 'devkit', @(x) isa(x, 'mlkinetics.ScannerKit'))
-            addParameter(ip, 'scanner', [], @(x) isa(x, 'mlpet.AbstractDevice'))
-            addParameter(ip, 'arterial', [], @iscell)
+            addParameter(ip, 'scanner', [], @(x) isa(x, 'mlpet.ScannerDevice'))
+            addParameter(ip, 'arterial', [], @(x) iscell(x) && isa(x{1}, 'mlpet.InputFuncDevice'))
             addParameter(ip, 'roi', [], @(x) isa(x, 'mlfourd.ImagingContext2'))
             parse(ip, devkit, varargin{:})
             ipr = ip.Results;      
@@ -554,7 +426,7 @@ classdef (Abstract) ScannerKit < handle & mlsystem.IHandle
             Nt = ceil(timesMid__(end));
             
             % arterialDevs calibrate & align arterial times-series to localized scanner time-series  
-            [a1, datetimePeak] = devkit.alignArterialToScanner( ...
+            [a1, datetimePeak] = ipr.arterial{1}.alignArterialToReference( ...
                 ipr.arterial{1}, s, 'sameWorldline', false);
             Dt = a1.Dt;
             aif1 = a1.activityDensity(); % 1 Hz Twilite
@@ -638,10 +510,10 @@ classdef (Abstract) ScannerKit < handle & mlsystem.IHandle
             ip.KeepUnmatched = true;
             addRequired(ip, 'devkit', @(x) isa(x, 'mlkineticsc.ScannerKit'))
             addRequired(ip, 'devkit2', @(x) isa(x, 'mlkineticsc.ScannerKit'))
-            addParameter(ip, 'scanner', [], @(x) isa(x, 'mlpet.AbstractDevice'))
-            addParameter(ip, 'scanner2', [], @(x) isa(x, 'mlpet.AbstractDevice'))
-            addParameter(ip, 'arterial', [], @(x) isa(x, 'mlpet.AbstractDevice'))
-            addParameter(ip, 'arterial2', [], @(x) isa(x, 'mlpet.AbstractDevice'))
+            addParameter(ip, 'scanner', [], @(x) isa(x, 'mlpet.ScannerDevice'))
+            addParameter(ip, 'scanner2', [], @(x) isa(x, 'mlpet.ScannerDevice'))
+            addParameter(ip, 'arterial', [], @(x) isa(x, 'mlpet.InputFuncDevice'))
+            addParameter(ip, 'arterial2', [], @(x) isa(x, 'mlpet.InputFuncDevice'))
             addParameter(ip, 'roi', [], @(x) isa(x, 'mlfourd.ImagingContext2'))
             addParameter(ip, 'roi2', [], @(x) isa(x, 'mlfourd.ImagingContext2'))
             addParameter(ip, 'DtMixing', 0, @isscalar) % sec > 0
@@ -686,8 +558,8 @@ classdef (Abstract) ScannerKit < handle & mlsystem.IHandle
             ip = inputParser;
             ip.KeepUnmatched = true;
             addRequired(ip, 'devkit', @(x) isa(x, 'mmlkineticsc.ScannerKit'))
-            addParameter(ip, 'scanner', [], @(x) isa(x, 'mlpet.AbstractDevice'))
-            addParameter(ip, 'arterial', [], @(x) isa(x, 'mlpet.AbstractDevice'))
+            addParameter(ip, 'scanner', [], @(x) isa(x, 'mlpet.ScannerDevice'))
+            addParameter(ip, 'arterial', [], @(x) isa(x, 'mlpet.InputFuncDevice'))
             addParameter(ip, 'roi', [], @(x) isa(x, 'mlfourd.ImagingContext2'))
             parse(ip, devkit, varargin{:})
             ipr = ip.Results;

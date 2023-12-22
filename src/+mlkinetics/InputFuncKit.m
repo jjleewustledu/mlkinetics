@@ -21,10 +21,23 @@ classdef (Abstract) InputFuncKit < handle & mlsystem.IHandle
     end
 
     properties (Dependent)
+        hct % for TwiliteKit
         recovery_coeff % multiplies input function
     end
 
     methods %% GET
+        function g = get.hct(this)
+            if isempty(this.device_)
+                do_make_device(this);
+            end
+            g = this.device_.hct;
+        end
+        function     set.hct(this, s)
+            if isempty(this.device_)
+                do_make_device(this);
+            end
+            this.device_.hct = s;
+        end
         function g = get.recovery_coeff(this)
             g = this.recovery_coeff_;
         end
@@ -52,6 +65,9 @@ classdef (Abstract) InputFuncKit < handle & mlsystem.IHandle
         
         function h = do_make_plot(this)
             h = figure;
+            if isempty(this.input_func_ic_)
+                this.do_make_activity_density()
+            end
             img = asrow(this.input_func_ic_.imagingFormat.img);
             try
                 timesMid = asrow(this.input_func_ic_.json_metadata.timesMid);
@@ -61,7 +77,8 @@ classdef (Abstract) InputFuncKit < handle & mlsystem.IHandle
                 timesMid = 1:length(img);
                 xl = "time frame";
             end
-            plot(timesMid, img, ":o")
+            N = min(length(timesMid), length(img));
+            plot(timesMid(1:N), img(1:N), ":o")
             xlabel(xl);
             ylabel("activity density (Bq/mL)");
             title(sprintf("%s: \n%s", stackstr(3), this.input_func_ic_.fileprefix), interprete="none");
@@ -135,7 +152,8 @@ classdef (Abstract) InputFuncKit < handle & mlsystem.IHandle
             % opts.scanner_kit mlkinetics.ScannerKit {mustBeNonempty}
             % opts.input_func_tags string
             % opts.input_func_fqfn string
-            % opts.recovery_coeff double = 1            
+            % opts.recovery_coeff double = 1      
+            % opts.referenceDev = [], for time-aligning bolus inflow of input func
 
             arguments
                 opts.bids_kit mlkinetics.BidsKit {mustBeNonempty}
@@ -144,11 +162,17 @@ classdef (Abstract) InputFuncKit < handle & mlsystem.IHandle
                 opts.input_func_tags string
                 opts.input_func_fqfn string
                 opts.recovery_coeff double = 1
+                opts.referenceDev = []
+                opts.hct double = 44.5
+            end
+            if isempty(opts.referenceDev)
+                opts.referenceDev = opts.scanner_kit.do_make_device();
             end
             copts = namedargs2cell(opts);
 
             if any(contains(opts.input_func_tags, "twilite", IgnoreCase=true))
                 this = mlswisstrace.TwiliteKit.instance(copts{:});
+                this.hct = opts.hct;
                 return
             end
             if any(contains(opts.input_func_tags, "caprac", IgnoreCase=true))
@@ -236,10 +260,12 @@ classdef (Abstract) InputFuncKit < handle & mlsystem.IHandle
     properties (Access = protected)
         bids_kit_
         device_
+        hct_
         input_func_fqfn_
         input_func_ic_
         input_func_tags_
         recovery_coeff_
+        referenceDev_
         scanner_kit_
         tracer_kit_        
     end
@@ -249,8 +275,12 @@ classdef (Abstract) InputFuncKit < handle & mlsystem.IHandle
             that = copyElement@matlab.mixin.Copyable(this);
             if ~isempty(this.bids_kit_)
                 that.bids_kit_ = copy(this.bids_kit_); end
+            if ~isempty(this.device_)
+                that.device_ = copy(this.device_); end
             if ~isempty(this.scanner_kit_)
                 that.scanner_kit_ = copy(this.scanner_kit_); end
+            if ~isempty(this.referenceDev_)
+                that.referenceDev_ = copy(this.referenceDev_); end
             if ~isempty(this.tracer_kit_)
                 that.tracer_kit_ = copy(this.tracer_kit_); end
         end
@@ -263,6 +293,8 @@ classdef (Abstract) InputFuncKit < handle & mlsystem.IHandle
                 opts.input_func_tags string = ""
                 opts.input_func_fqfn string = ""
                 opts.recovery_coeff double = 1
+                opts.referenceDev = []
+                opts.hct double = 44.5
             end
 
             for f = asrow(fields(opts))
