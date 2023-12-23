@@ -7,15 +7,18 @@ classdef (Sealed) MipIdifKit < handle & mlkinetics.IdifKit
 
     methods
         function ic = do_make_activity(this, varargin)
+            if isempty(this.device_)
+                do_make_device(this);
+            end
             ic = this.do_make_input_func(varargin{:});
+            ic = ic*this.device_.visibleVolume;
         end
         function ic = do_make_activity_density(this, varargin)
+            if isempty(this.device_)
+                do_make_device(this);
+            end
             ic = this.do_make_input_func(varargin{:});
         end
-        function dev = do_make_device(this)
-            this.device_ = this.scanner_kit_.do_make_device();
-            dev = this.device_;
-        end 
         function idif_ic = do_make_input_func(this, opts)
             %% calls builders to create input function
             arguments
@@ -27,6 +30,11 @@ classdef (Sealed) MipIdifKit < handle & mlkinetics.IdifKit
                 opts.pet_mipt = []
                 opts.steps logical = true(1,5)
                 opts.delete_large_files logical = true;
+                opts.model_kind {mustBeTextScalar} = this.model_kind_
+            end
+
+            if isempty(this.device_)
+                do_make_device(this);
             end
 
             if ~isempty(this.input_func_ic_)
@@ -39,10 +47,11 @@ classdef (Sealed) MipIdifKit < handle & mlkinetics.IdifKit
                 tracer_kit=this.tracer_kit_, ...
                 scanner_kit=this.scanner_kit_, ...
                 pet_avgt=opts.pet_avgt, ...
-                pet_mipt=opts.pet_mipt);
+                pet_mipt=opts.pet_mipt, ...
+                model_kind=opts.model_kind);
             idif_ic = mipidif.build_all(steps=opts.steps, delete_large_files=opts.delete_large_files);
-            idif_ic = idif_ic*this.recovery_coeff;
-            idif_ic.addJsonMetadata(opts);
+            %idif_ic = idif_ic*this.recovery_coeff;
+            %idif_ic.addJsonMetadata(opts); % clobbers json when idif is on filesystem
             this.input_func_ic_ = idif_ic;
         end
     end

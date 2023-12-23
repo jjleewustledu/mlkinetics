@@ -22,6 +22,7 @@ classdef (Abstract) InputFuncKit < handle & mlsystem.IHandle
 
     properties (Dependent)
         hct % for TwiliteKit
+        model_kind 
         recovery_coeff % multiplies input function
     end
 
@@ -37,6 +38,18 @@ classdef (Abstract) InputFuncKit < handle & mlsystem.IHandle
                 do_make_device(this);
             end
             this.device_.hct = s;
+        end
+        function g = get.model_kind(this)
+            if isempty(this.device_)
+                do_make_device(this);
+            end
+            g = this.device_.model_kind;
+        end
+        function     set.model_kind(this, s)
+            if isempty(this.device_)
+                do_make_device(this);
+            end
+            this.device_.model_kind = s;
         end
         function g = get.recovery_coeff(this)
             g = this.recovery_coeff_;
@@ -150,7 +163,7 @@ classdef (Abstract) InputFuncKit < handle & mlsystem.IHandle
             % opts.bids_kit mlkinetics.BidsKit {mustBeNonempty}
             % opts.tracer_kit mlkinetics.TracerKit {mustBeNonempty}
             % opts.scanner_kit mlkinetics.ScannerKit {mustBeNonempty}
-            % opts.input_func_tags string
+            % opts.input_func_tags string % may contain {"twilite", "caprac", "fung", "mip", "nifti", "*bolus"}
             % opts.input_func_fqfn string
             % opts.recovery_coeff double = 1      
             % opts.referenceDev = [], for time-aligning bolus inflow of input func
@@ -168,11 +181,11 @@ classdef (Abstract) InputFuncKit < handle & mlsystem.IHandle
             if isempty(opts.referenceDev)
                 opts.referenceDev = opts.scanner_kit.do_make_device();
             end
+            opts = mlkinetics.InputFuncKit.parse_model(opts);
             copts = namedargs2cell(opts);
 
             if any(contains(opts.input_func_tags, "twilite", IgnoreCase=true))
                 this = mlswisstrace.TwiliteKit.instance(copts{:});
-                this.hct = opts.hct;
                 return
             end
             if any(contains(opts.input_func_tags, "caprac", IgnoreCase=true))
@@ -260,10 +273,11 @@ classdef (Abstract) InputFuncKit < handle & mlsystem.IHandle
     properties (Access = protected)
         bids_kit_
         device_
-        hct_
+        hct_ 
         input_func_fqfn_
         input_func_ic_
         input_func_tags_
+        model_kind_
         recovery_coeff_
         referenceDev_
         scanner_kit_
@@ -295,6 +309,7 @@ classdef (Abstract) InputFuncKit < handle & mlsystem.IHandle
                 opts.recovery_coeff double = 1
                 opts.referenceDev = []
                 opts.hct double = 44.5
+                opts.model_kind {mustBeTextScalar} = "3bolus"
             end
 
             for f = asrow(fields(opts))
@@ -306,6 +321,29 @@ classdef (Abstract) InputFuncKit < handle & mlsystem.IHandle
         function this = InputFuncKit()
         end
     end    
+
+    %% PRIVATE
+
+    methods (Static, Access = private)
+        function opts = parse_model(opts)
+            if ~contains(opts.input_func_tags, "twilite", IgnoreCase=true) && ...
+                    ~contains(opts.input_func_tags, "mip", IgnoreCase=true)
+                return
+            end
+            if contains(opts.input_func_tags, "4bolus", IgnoreCase=true)
+                opts.model_kind = "4bolus";
+            end
+            if contains(opts.input_func_tags, "3bolus", IgnoreCase=true)
+                opts.model_kind = "3bolus";
+            end
+            if contains(opts.input_func_tags, "2bolus", IgnoreCase=true)
+                opts.model_kind = "2bolus";
+            end
+            if contains(opts.input_func_tags, "1bolus", IgnoreCase=true)
+                opts.model_kind = "1bolus";
+            end
+        end
+    end
 
     %% HIDDEN
     
