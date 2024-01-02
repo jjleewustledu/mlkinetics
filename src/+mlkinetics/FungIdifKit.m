@@ -18,6 +18,9 @@ classdef (Sealed) FungIdifKit < handle & mlkinetics.IdifKit
             %     opts.k double {mustBeScalarOrEmpty} = 4
             %     opts.t double {mustBeVector} = [0 0 0 0.2 0.4 0.6 0.8 1 1 1]
 
+            if isempty(this.device_)
+                do_make_device(this);
+            end
             ic = this.scanner_kit_.do_make_activity();
             ic = this.do_make_input_func(ic, varargin{:});
         end
@@ -33,12 +36,11 @@ classdef (Sealed) FungIdifKit < handle & mlkinetics.IdifKit
             %     opts.k double {mustBeScalarOrEmpty} = 4
             %     opts.t double {mustBeVector} = [0 0 0 0.2 0.4 0.6 0.8 1 1 1]
 
+            if isempty(this.device_)
+                do_make_device(this);
+            end
             ic = this.scanner_kit_.do_make_activity_density();
             ic = this.do_make_input_func(ic, varargin{:});
-        end
-        function dev = do_make_device(this)
-            this.device_ = this.scanner_kit_.do_make_device();
-            dev = this.device_;
         end
         function idif_ic = do_make_input_func(this, activity_density_ic, opts)
             arguments

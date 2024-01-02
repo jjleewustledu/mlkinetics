@@ -133,10 +133,12 @@ classdef (Abstract) InputFuncKit < handle & mlsystem.IHandle
                 opts.bids_fqfn {mustBeFile}
                 opts.bids_tags {mustBeTextScalar}
                 opts.ref_source_props = datetime(2022,2,1, TimeZone="local")
+                opts.tracer_tags {mustBeTextScalar}
                 opts.counter_tags {mustBeTextScalar} = "caprac"
                 opts.scanner_tags {mustBeTextScalar}
                 opts.input_func_tags {mustBeTextScalar}
                 opts.input_func_fqfn {mustBeTextScalar} = ""
+                opts.hct {mustBeNumeric} = 44.5
             end
 
             bk = mlkinetics.BidsKit.create( ...
@@ -145,6 +147,7 @@ classdef (Abstract) InputFuncKit < handle & mlsystem.IHandle
             tk = mlkinetics.TracerKit.create( ...
                 bids_kit=bk, ...
                 ref_source_props=opts.ref_source_props, ...
+                tracer_tags=opts.tracer_tags, ...
                 counter_tags=opts.counter_tags);
             sk = mlkinetics.ScannerKit.create( ...
                 bids_kit=bk, ...
@@ -155,7 +158,8 @@ classdef (Abstract) InputFuncKit < handle & mlsystem.IHandle
                 tracer_kit=tk, ...
                 scanner_kit=sk, ...
                 input_func_tags=opts.input_func_tags, ...
-                input_func_fqfn=opts.input_func_fqfn);
+                input_func_fqfn=opts.input_func_fqfn, ...
+                hct=opts.hct);
         end
         function this = create(opts)
             %% Creates InputFuncKit instance from existing kits and input func. specifiers. 
@@ -179,7 +183,11 @@ classdef (Abstract) InputFuncKit < handle & mlsystem.IHandle
                 opts.hct double = 44.5
             end
             if isempty(opts.referenceDev)
-                opts.referenceDev = opts.scanner_kit.do_make_device();
+                try
+                    opts.referenceDev = opts.scanner_kit.do_make_device();
+                catch ME
+                    handwarning(ME)
+                end
             end
             opts = mlkinetics.InputFuncKit.parse_model(opts);
             copts = namedargs2cell(opts);
@@ -341,6 +349,9 @@ classdef (Abstract) InputFuncKit < handle & mlsystem.IHandle
             end
             if contains(opts.input_func_tags, "1bolus", IgnoreCase=true)
                 opts.model_kind = "1bolus";
+            end
+            if contains(opts.input_func_tags, "nomodel", IgnoreCase=true)
+                opts.model_kind = "nomodel";
             end
         end
     end

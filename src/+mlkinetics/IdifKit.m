@@ -38,6 +38,21 @@ classdef IdifKit < handle & mlkinetics.InputFuncKit
                 this.decayCorrected_ = false;
             end
         end
+        function dev = do_make_device(this)
+            if ~isempty(this.device_)
+                dev = this.device_;
+                return
+            end
+
+            sd = this.scanner_kit_.do_make_device();
+            this.device_ = mlpet.IdifDevice.create( ...
+                calibration=sd.calibration_, ...
+                data=sd.data_);
+            sd_ic = sd.data_.imagingContext;
+            fp = mlpipeline.Bids.adjust_fileprefix(sd_ic.fileprefix, post_proc=stackstr(use_dashes=true));
+            this.device_.fqfp = fullfile(sd_ic.filepath, fp); 
+            dev = this.device_;
+        end
 
         function this = IdifKit(varargin)
             this = this@mlkinetics.InputFuncKit(varargin{:});
