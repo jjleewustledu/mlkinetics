@@ -263,13 +263,13 @@ classdef (Abstract) InputFuncKit < handle & mlsystem.IHandle
 
             % selection mask
             med = bk.do_make_med();
-            select = logical(med.dlicv_ic.imagingFormat.img);
+            selected = logical(med.dlicv_ic.imagingFormat.img);
 
-            % select recovery coeff from 3D
+            % selected recovery coeff from 3D
             ic = soln_art./soln;
             ic.fileprefix = bk.sprintf()+"_"+stackstr();
             ic.scrubNanInf()
-            rc = ic.imagingFormat.img(select);
+            rc = ic.imagingFormat.img(selected);
             
             fprintf("%s: recovery coeff. = %g +/- %g", ...
                 stackstr(), mean(rc, "omitnan"), std(rc, 0, "omitnan"))
