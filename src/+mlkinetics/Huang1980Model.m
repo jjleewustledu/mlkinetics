@@ -180,8 +180,8 @@ classdef (Sealed) Huang1980Model < handle & mlkinetics.TCModel
             
             tbl = radm.laboratory;
             rows = tbl.Properties.RowNames;
-            select = contains(rows, 'glc');
-            g = tbl.measurement(select);
+            selected = contains(rows, 'glc');
+            g = tbl.measurement(selected);
             g = mean(g(find(g)), 'omitnan'); %#ok<FNDSB>
         end
         function h = hctFromRadMeasurements(radm)
