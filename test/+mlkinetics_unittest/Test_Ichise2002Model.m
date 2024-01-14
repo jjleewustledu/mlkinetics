@@ -52,21 +52,42 @@ classdef Test_Ichise2002Model < matlab.unittest.TestCase
                 'measurement_sampled', measurement_, ...
                 'times', cumsum(taus) - taus, ...
                 'taus', taus);
-            ks = [0.8542/60, 0.0785/60, 0.0502/60, 0.0227/60, 1, 1];
+            %ks = [0.8542/60, 0.0785/60, 0.0502/60, 0.0227/60, 1, 1];
             obj.build_model( ...
                 map=obj.preferredMap_mdl, ...
                 measurement=measurement_);
             obj.solver = obj.solver.solve(@mlkinetics.Ichise2002Model.loss_function);
             obj.solver.plot(tag=stackstr(), zoomMeas=8, zoomModel=8, xlim=[-10, 3600]);
         end
-        function test_create_tz3108(this)
-            sk = mllkinetics.ScannerKit.create(scanner_tags="kmData");
-            ifk = mlkinetics.InputFuncKit.create(input_func_tags="kmData");
-            pk = mlkinetics.ParcKit.create(parc_tags="matrix");
-            obj = mlkinetics.Ichise2002Model.create( ...
-                scanner_kit=sk, ...
-                input_func_kit=ifk, ...
-                parc_kit=pk);
+        function test_TZ3108_build_multinest(this)
+            % fqfn = fullfile( ...
+            %     "/Volumes/T7 Shield/TZ3108/sub-lou/ses-20230406/chemistry", ...
+            %     "sub-lou_ses-20230406_pkin-recalib2.kmData.xls");
+            fqfn = fullfile( ...
+                "/Volumes/T7 Shield/TZ3108/sub-bud/ses-20140724/chemistry", ...
+                "sub-bud_ses-20140724_pkin.kmData.xls");
+            tz = mlwong.TZ3108.create(fqfn);
+            tz.build_multinest();
+            tz.plot_multinest();
+        end
+        function test_TZ3108_build_simul_anneal(this)
+            fqfn = fullfile( ...
+                "/Volumes/T7 Shield/TZ3108/sub-lou/ses-20230406/chemistry", ...
+                "sub-lou_ses-20230406_pkin-recalib2.kmData.xls");
+            tz = mlwong.TZ3108.create(fqfn);
+            tz.build_simul_anneal();
+            tz.plot_simul_anneal();
+        end
+        function test_KMData_create(this)
+            fqfn = fullfile( ...
+                "/Volumes/T7 Shield/TZ3108/sub-lou/ses-20230406/chemistry", ...
+                "sub-lou_ses-20230406_pkin-recalib2.kmData.xls");
+            kmd = mlpmod.KMData.create(fqfn);
+            disp(kmd.header)
+            disp(kmd.input_func)
+            disp(kmd.regions)
+            disp(kmd.scanner_data)
+            disp(kmd.timesMid)
         end
     end
     

@@ -186,6 +186,10 @@ classdef (Abstract) ScannerKit < handle & mlsystem.IHandle
                     return
                 end
             end
+            if any(contains(opts.scanner_tags, "kmData", IgnoreCase=true))
+                this = mlpmod.KMScannerKit.instance(copts{:});
+                return
+            end
         end
 
         %% utilities
@@ -619,8 +623,8 @@ classdef (Abstract) ScannerKit < handle & mlsystem.IHandle
         function install_scanner(this, opts)
             arguments
                 this mlkinetics.ScannerKit
-                opts.bids_kit mlkinetics.BidsKit {mustBeNonempty}
-                opts.tracer_kit mlkinetics.TracerKit {mustBeNonempty}
+                opts.bids_kit mlkinetics.BidsKit
+                opts.tracer_kit mlkinetics.TracerKit
                 opts.scanner_tags {mustBeText}
                 opts.noclobber logical = true % helps performance by avoiding filesystem writing
             end

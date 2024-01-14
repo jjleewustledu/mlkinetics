@@ -205,7 +205,7 @@ classdef Ichise2002Model < handle & mlkinetics.Model
             m('k3') = struct('min', eps,   'max',    0.01,  'init', 0.001,   'sigma', 0.001);
             m('k4') = struct('min', eps,   'max',    0.001, 'init', 0.00011, 'sigma', 0.00011);
             m('k5') = struct('min',   0.1, 'max',   10,     'init', 1,       'sigma', 0.05); % VP
-            m('k6') = struct('min',   1,   'max',  100,     'init', 1,       'sigma', 0.05); % VN + VS
+            m('k6') = struct('min',   1,   'max',   50,     'init', 1,       'sigma', 0.05); % VN + VS
         end
         function m    = preferredMap_mdl()
             %% k1 ~ K1, k5 ~ VP, k6 ~ VN + VS
@@ -216,7 +216,7 @@ classdef Ichise2002Model < handle & mlkinetics.Model
             m('k3') = struct('min', 1e-4, 'max',    0.5/60, 'init', 0.0502/60, 'sigma', 0.001);
             m('k4') = struct('min', 1e-4, 'max',    0.2/60, 'init', 0.0227/60, 'sigma', 0.00011);
             m('k5') = struct('min', 0.1,  'max',   10,      'init', 1,         'sigma', 0.05); % VP
-            m('k6') = struct('min', 1,    'max',  100,      'init', 1,         'sigma', 0.05); % VN + VS
+            m('k6') = struct('min', 1,    'max',   50,      'init', 1,         'sigma', 0.05); % VN + VS
         end
         function m    = preferredMap_unknown()
             %% k1 ~ K1, k5 ~ VP, k6 ~ VN + VS;
@@ -228,15 +228,17 @@ classdef Ichise2002Model < handle & mlkinetics.Model
             m('k3') = struct('min', eps,   'max',    0.01,  'init', 0.001,   'sigma', 0.001);
             m('k4') = struct('min', eps,   'max',    0.001, 'init', 0.00011, 'sigma', 0.00011);
             m('k5') = struct('min',   0.1, 'max',   10,     'init', 1,       'sigma', 0.05); % VP
-            m('k6') = struct('min',   1,   'max',  100,     'init', 1,       'sigma', 0.05); % VN + VS
+            m('k6') = struct('min',   1,   'max',   50,     'init', 1,       'sigma', 0.05); % VN + VS
         end
-        function C_T   = sampled(ks, Data, plasma_interpolated, times_sampled)
+        function [C_T,A] = sampled(ks, Data, plasma_interpolated, times_sampled)
             %  @param artery_interpolated is uniformly sampled at high sampling freq.
             %  @param times_sampled are samples scheduled by the time-resolved PET reconstruction
             
             Data.times_sampled = times_sampled;
             C_T = mlkinetics.Ichise2002Model.solution(ks, Data, plasma_interpolated);
             %C_T = mlkinetics.Ichise2002Model.solutionOnScannerFrames(qs, times_sampled);
+
+            A = 1; % amplitude used by some models
         end
         function C_T  = solution(ks, Data, plasma_interpolated)
             %% k1 ~ K1, k5 ~ VP, regional plasma volume-of-distrib., k6 ~ VN + VS
@@ -244,7 +246,7 @@ classdef Ichise2002Model < handle & mlkinetics.Model
             meas_samp = Data.measurement_sampled;
             times_samp = Data.times_sampled;
             times = Data.times;
-            Nt = length(plasma_interpolated);
+            Np = length(plasma_interpolated);
 
             K1 = ks(1);
             VP = ks(5);
@@ -259,17 +261,19 @@ classdef Ichise2002Model < handle & mlkinetics.Model
             for tidx = 2:length(times_samp)
                 m_ = meas_samp(1:tidx);
                 t_ = times_samp(1:tidx);
-                times_ = 0:min(times(tidx), Nt - 1);
-                p_ = plasma_interpolated(times_+1); 
+                times__ = 0:min(times(tidx), Np - 1);
+                plasma__ = plasma_interpolated(times__+1); 
                 
                 int3 = trapz(t_, m_); 
-                int4 = trapz(times_, p_);
+                int4 = trapz(times__, plasma__);
                 int2 = 0.5*trapz(t_, cumtrapz(t_, m_));
-                int1 = 0.5*trapz(times_, cumtrapz(times_, p_));
+                int1 = 0.5*trapz(times__, cumtrapz(times__, plasma__));
 
+                pidx = min(length(plasma_interpolated), times_samp(tidx)+1);
                 C_T(tidx) = g1*int1 + g2*int2 + g3*int3 + g4star*int4 + ...
-                    g5*plasma_interpolated(times_samp(tidx)+1);
+                    g5*plasma_interpolated(pidx);
             end
+            %C_T(C_T < 0) = 0;
             C_T = C_T/max(C_T);
         end
     end
