@@ -31,6 +31,7 @@ classdef (Sealed) MipIdifKit < handle & mlkinetics.IdifKit
                 opts.steps logical = true(1,5)
                 opts.delete_large_files logical = true;
                 opts.model_kind {mustBeTextScalar} = this.model_kind_
+                opts.reference_tracer {mustBeTextScalar} = "fdg"
             end
 
             if isempty(this.device_)
@@ -48,7 +49,8 @@ classdef (Sealed) MipIdifKit < handle & mlkinetics.IdifKit
                 scanner_kit=this.scanner_kit_, ...
                 pet_avgt=opts.pet_avgt, ...
                 pet_mipt=opts.pet_mipt, ...
-                model_kind=opts.model_kind);
+                model_kind=opts.model_kind, ...
+                reference_tracer=opts.reference_tracer);
             idif_ic = mipidif.build_all(steps=opts.steps, delete_large_files=opts.delete_large_files);
             %idif_ic = idif_ic*this.recovery_coeff;
             %idif_ic.addJsonMetadata(opts); % clobbers json when idif is on filesystem

@@ -20,6 +20,10 @@ classdef Test_InputFuncKit < matlab.unittest.TestCase
             this.assertEqual(1,1);
         end
                 
+        function test_align_centerline_on_pet(this)
+            lee = mlvg.Lee2024();
+            lee.call_ifk(1, steps=[0,0,0,1,0,0]);
+        end
         function test_build_activity_densities(this)
             sources = fullfile(getenv("SINGULARITY_HOME"), ...
                 "CCIR_01211", "sourcedata", "sub-108293", "ses-20210421", "pet");
