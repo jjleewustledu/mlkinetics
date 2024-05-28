@@ -53,21 +53,12 @@ classdef Test_ModelKit < matlab.unittest.TestCase
             this.verifyEqual(1,1);
             this.assertEqual(1,1);
         end
+        function test_create(this)
+            disp(this.testObj_)
+            disp(this.testObj_.proto_registry("quadratic-martin1987"))
+        end
         function test_empty(this)
             disp(stackstr())
-        end
-
-
-
-
-
-        function test_solutionOnScannerFrames(this)
-            q1 = mlkinetics.Raichle1983Model.solutionOnScannerFrames(5:114, 5:114);
-            this.verifyEqual(q1, 5:114);
-            taus = [10 10 14 14 22 22];
-            times_sampled = cumsum(taus) - taus/2; % ~ timesMid
-            q1 = mlkinetics.Raichle1983Model.solutionOnScannerFrames(5:114, times_sampled);
-            this.verifyEqual(q1, times_sampled, RelTol=0.01);
         end
         function test_enclave(this)
             E_cbv_wb = this.enclaveCbv.volumeAveraged(this.enclaveDlicv);
@@ -78,12 +69,16 @@ classdef Test_ModelKit < matlab.unittest.TestCase
             E_cbf_wb = double(E_cbf_wb);
             this.verifyEqual(E_cbf_wb, 40.853492736816406, RelTol=1e-15)
         end
+        function test_solutionOnScannerFrames(this)
+            q1 = mlkinetics.Raichle1983Model.solutionOnScannerFrames(5:114, 5:114);
+            this.verifyEqual(q1, 5:114);
+            taus = [10 10 14 14 22 22];
+            times_sampled = cumsum(taus) - taus/2; % ~ timesMid
+            q1 = mlkinetics.Raichle1983Model.solutionOnScannerFrames(5:114, times_sampled);
+            this.verifyEqual(q1, times_sampled, RelTol=0.01);
+        end
         function test_tracer_kit(this)
             disp(this.tracer_15o_kit.proto_registry('caprac'))
-        end
-        function test_create(this)
-            disp(this.testObj_)
-            disp(this.testObj_.proto_registry("quadratic-martin1987"))
         end
 
         %% alternatives to this.testObj
@@ -254,6 +249,47 @@ classdef Test_ModelKit < matlab.unittest.TestCase
                 data=data, ...
                 model_tags="huang1980");            
             sol = mk.make_solution();
+            disp(sol)
+            sol.view()
+            sol.save()
+        end
+        function test_dynesty(this)
+            import mlkinetics.*
+
+            sourcedataDir = ...
+                fullfile(getenv("SINGULARITY_HOME"), "CCIR_01211", "sourcedata", "sub-108293", "ses-20210421152358", "pet");
+            derivativesDir = ...
+                fullfile(getenv("SINGULARITY_HOME"), "CCIR_01211", "derivatives", "sub-108293", "ses-20210421152358", "pet");
+            cbvDir = ...
+                fullfile(getenv("SINGULARITY_HOME"), "CCIR_01211", "derivatives", "sub-108293", "ses-20210421144815", "pet");
+            hoFqfn = ...
+                fullfile(sourcedataDir, "sub-108293_ses-20210421152358_trc-ho_proc-delay0-BrainMoCo2-createNiftiMovingAvgFrames.nii.gz");
+            hoMipidifFqfn = ...
+                fullfile(derivativesDir, "sub-108293_ses-20210421152358_trc-ho_proc-MipIdif_idif_dynesty-Boxcar-ideal.nii.gz");
+            martinv1Fqfn = ...
+                fullfile(cbvDir, "sub-108293_ses-20210421144815_martinv1_on_ho.nii.gz");
+
+            bk = BidsKit.create( ...
+                bids_tags="ccir1211", bids_fqfn=hoFqfn);
+            tk = TracerKit.create( ...
+                bids_kit=bk, ...
+                ref_source_props=datetime(2022,2,1, TimeZone="local"), ...
+                tracer_tags="15O", ...
+                counter_tags="caprac");
+            sk = ScannerKit.create( ...
+                bids_kit=bk, tracer_kit=tk, scanner_tags="vision");
+            ifk = InputFuncKit.create( ...
+                bids_kit=bk, tracer_kit=tk, scanner_kit=sk, ...
+                input_func_tags="nifti", ...
+                input_func_fqfn=hoMipidifFqfn);
+            pk = ParcKit.create( ...
+                bids_kit=bk, parc_tags="wmparc-wmparc");
+            martinv1_ic = mlfourd.ImagingContext2(martinv1Fqfn);
+            mk = ModelKit.create( ...
+                bids_kit=bk, tracer_kit=tk, scanner_kit=sk, input_func_kit=ifk, parc_kit=pk, ...
+                data=struct("martinv1_ic", martinv1_ic), ...
+                model_tags="dynesty-idif-raichle1983");
+            sol = mk.make_solution();            
             disp(sol)
             sol.view()
             sol.save()

@@ -1,4 +1,4 @@
-classdef (Sealed) ParcWmparc < handle & mlkinetics.Parc
+classdef (Sealed) ParcSchaeffer < handle & mlkinetics.Parc
     %% line1
     %  line2
     %  
@@ -8,6 +8,7 @@ classdef (Sealed) ParcWmparc < handle & mlkinetics.Parc
     properties (Dependent)
         Nx
         unique_indices
+        select_ic
         select_vec
     end
 
@@ -24,6 +25,9 @@ classdef (Sealed) ParcWmparc < handle & mlkinetics.Parc
             ifc_ = this.select_ic_.imagingFormat;
             this.unique_indices_ = unique(ifc_.img(ifc_.img > 0));
             g = this.unique_indices_;
+        end
+        function g = get.select_ic(this)
+            g = this.select_ic_;
         end
         function g = get.select_vec(this)
             if ~isempty(this.select_vec_)
@@ -67,8 +71,14 @@ classdef (Sealed) ParcWmparc < handle & mlkinetics.Parc
 
             idx = [1 7:13 16:20 24 26:28 1025 2000 3000 4000 5001 5002 6000];
         end
-        function ic = reshape_from_parc(this, ic1)
+        function ic = reshape_from_parc(this, ic1, opts)
             %% ndims(ic1) == 2 => ndims(ic) == 4, inverse of reshape_to_parc
+
+            arguments
+                this mlkinetics.ParcSchaeffer
+                ic1 mlfourd.ImagingContext2
+                opts.target = []
+            end
 
             % convenience
             if ~isa(ic1, "mlfourd.ImagingContext2")
@@ -78,7 +88,7 @@ classdef (Sealed) ParcWmparc < handle & mlkinetics.Parc
             assert(ndims(ic1) == 2) %#ok<ISMAT
             ifc1 = ic1.imagingFormat;
 
-            sz = asrow(size(this.mlsurfer_wmparc_.wmparc));
+            sz = asrow(size(this.mlsurfer_schaeffer_.schaeffer));
             Nt = size(ifc1, 2);
             ifc_mat = ifc1.img;
             img_ = zeros([prod(sz), Nt]);
@@ -87,14 +97,20 @@ classdef (Sealed) ParcWmparc < handle & mlkinetics.Parc
                 Nselect = sum(idx_select);
                 img_(idx_select, :) = repmat(ifc_mat(idx, :), [Nselect, 1]);
             end
-            ifc1.img = reshape(img_, [sz(1), sz(2), sz(3), Nt]);
-            ifc1.img = squeeze(ifc1.img);
-            if contains(ifc1.fileprefix, "reshape_to_parc")
-                ifc1.fileprefix = strrep(ifc1.fileprefix, "reshape_to_parc", "reshape_from_parc");
+
+            if isempty(opts.target)
+                ifc11 = ifc1;
             else
-                ifc1.fileprefix = ifc1.fileprefix + "_" + stackstr();
-            end            
-            ic = mlfourd.ImagingContext2(ifc1);
+                ifc11 = opts.target.imagingFormat;
+            end
+            ifc11.img = reshape(img_, [sz(1), sz(2), sz(3), Nt]);
+            ifc11.img = squeeze(ifc11.img);
+            idx_proc = strfind(ifc1.fileprefix, "_proc-");
+            idx_scha = strfind(ifc1.fileprefix, "-schaeffer-schaeffer") + length('-schaeffer-schaeffer');
+            c = convertStringsToChars(ifc1.fileprefix);
+            ifc11.fileprefix = c(1:idx_proc-1) + "_proc-" + stackstr(use_dashes=true) + "-" + c(idx_scha+1:end);
+            ic = mlfourd.ImagingContext2(ifc11);
+            ic.filepath = strrep(ic1.filepath, "sourcedata", "derivatives");
         end
         function ic1 = reshape_to_parc(this, ic)
 
@@ -105,10 +121,12 @@ classdef (Sealed) ParcWmparc < handle & mlkinetics.Parc
 
             if ndims(ic) == 4
                 ic1 = this.reshape_to_parc_4d(ic);
+                ic1.filepath = strrep(ic1.filepath, "sourcedata", "derivatives");
                 return
             end
             if ndims(ic) == 3
                 ic1 = this.reshape_to_parc_3d(ic);
+                ic1.filepath = strrep(ic1.filepath, "sourcedata", "derivatives");
                 return
             end
             error("mlkinetic:RuntimeError", stackstr())
@@ -142,7 +160,7 @@ classdef (Sealed) ParcWmparc < handle & mlkinetics.Parc
             sz = size(ifc);
             Nt = size(ifc, 4);
             ifc_mat = reshape(ifc.img, [prod(sz(1:3)), Nt]);
-            img_ = zeros(this.Nx, Nt);
+            img_ = zeros(this.Nx, Nt, "single");
             for idx = 1:this.Nx
                 idx_select = this.select_vec == this.unique_indices(idx);
                 img_(idx, :) = mean(ifc_mat(idx_select,:), 1, "omitnan");
@@ -159,55 +177,38 @@ classdef (Sealed) ParcWmparc < handle & mlkinetics.Parc
         function this = create(varargin)
             %% 
             % 
-            % opts.bids_kit mlkinetics.BidsKit {mustBeNonempty} % prototype for parcs & segs from Wmparc, Schaeffer, etc.
+            % opts.bids_kit mlkinetics.BidsKit {mustBeNonempty} % prototype for parcs & segs from Wmparc, Schaeffer, etc. 
             % opts.representation_kit = [] % mlkinetics.RepresentationKit {mustBeNonempty} % prototype
             % opts.scanner_kit = [] 
             % opts.parc_tags {mustBeText}
 
-            this = mlkinetics.ParcWmparc(varargin{:});
+            this = mlkinetics.ParcSchaeffer(varargin{:});
 
             med = this.bids_kit_.make_bids_med();
-            this.mlsurfer_wmparc_ = mlsurfer.Wmparc.createCoregisteredFromBids( ...
-                med.bids, med.imagingReference);
+            this.mlsurfer_schaeffer_ = mlsurfer.Schaeffer.create(med.imagingContext);
 
-            if contains(this.parc_tags_, "wmparc-wmparc")                
-                this.select_ic_ = this.mlsurfer_wmparc_.wmparc();
+            if contains(this.parc_tags_, "schaeffer-schaeffer")                
+                this.select_ic_ = this.mlsurfer_schaeffer_.schaeffer;
                 return
             end
             if contains(this.parc_tags_, "select-all")                
-                this.select_ic_ = this.mlsurfer_wmparc_.select_all();
+                this.select_ic_ = this.mlsurfer_schaeffer_.select_all();
                 return
             end
-            if contains(this.parc_tags_, "select-cortex")                
-                this.select_ic_ = this.mlsurfer_wmparc_.select_cortex();
+            if contains(this.parc_tags_, "select-brain")                
+                this.select_ic_ = this.mlsurfer_schaeffer_.select_brain();
                 return
             end
-            if contains(this.parc_tags_, "select-gray")
-                this.select_ic_ = this.mlsurfer_wmparc_.select_gray();
+            if contains(this.parc_tags_, "select-gm")                
+                this.select_ic_ = this.mlsurfer_schaeffer_.select_gm();
                 return
             end
-            if contains(this.parc_tags_, "select-white")
-                this.select_ic_ = this.mlsurfer_wmparc_.select_white();
+            if contains(this.parc_tags_, "select-wm")                
+                this.select_ic_ = this.mlsurfer_schaeffer_.select_wm();
                 return
             end
-            if contains(this.parc_tags_, "select-subcortex")
-                this.select_ic_ = this.mlsurfer_wmparc_.select_subcortex();
-                return
-            end
-            if contains(this.parc_tags_, "select-cerebellum")
-                this.select_ic_ = this.mlsurfer_wmparc_.select_cerebellum();
-                return
-            end
-            if contains(this.parc_tags_, "select-cereb-gray")
-                this.select_ic_ = this.mlsurfer_wmparc_.select_cereb_gray();
-                return
-            end
-            if contains(this.parc_tags_, "select-cereb-white")
-                this.select_ic_ = this.mlsurfer_wmparc_.select_cereb_white();
-                return
-            end
-            if contains(this.parc_tags_, "select-csf")
-                this.select_ic_ = this.mlsurfer_wmparc_.select_csf();
+            if contains(this.parc_tags_, "select-subcortical")                
+                this.select_ic_ = this.mlsurfer_schaeffer_.select_subcortical();
                 return
             end
         end
@@ -220,11 +221,11 @@ classdef (Sealed) ParcWmparc < handle & mlkinetics.Parc
         select_ic_
         select_vec_
         unique_indices_
-        mlsurfer_wmparc_
+        mlsurfer_schaeffer_
     end
 
     methods
-        function this = ParcWmparc(varargin)
+        function this = ParcSchaeffer(varargin)
             this = this@mlkinetics.Parc(varargin{:});
         end
     end

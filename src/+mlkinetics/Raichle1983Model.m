@@ -39,7 +39,7 @@ classdef Raichle1983Model < handle & mlkinetics.TCModel
             end
         end
         function soln = build_solution(this)
-            %% MAKE_SOLUTION
+            %% BUILD_SOLUTION
             %  @return ks_ in R^1 as mlfourd.ImagingContext2, without saving to filesystems.                                
 
             uindex = this.unique_indices;

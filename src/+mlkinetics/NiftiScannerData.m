@@ -45,7 +45,7 @@ classdef NiftiScannerData < handle & mlpet.AbstractScannerData
  			%  @param timeF <= this.times(end).
  			%  @param times are frame starts.
 
-            this = this@mlpet.AbstractScannerData(varargin{:});
+            this = this@mlpet.AbstractScannerData(varargin{:}, decayCorrected = true);
         end
     end
     

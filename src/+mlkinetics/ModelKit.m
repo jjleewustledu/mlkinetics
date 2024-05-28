@@ -165,7 +165,9 @@ classdef (Sealed) ModelKit < handle & mlsystem.IHandle
                 opts.input_func_kit.decayUncorrect();
                 save(opts.input_func_kit);
                 copts = namedargs2cell(opts);
-                if any(contains(opts.model_tags, "quadratic", IgnoreCase=true))
+                if any(contains(opts.model_tags, "dynesty", IgnoreCase=true))
+                    mdl = mldynesty.Mintun1984Model.create();
+                elseif any(contains(opts.model_tags, "quadratic", IgnoreCase=true))
                     mdl = mlkinetics.QuadraticMintun1984Model.create(copts{:});
                 else
                     mdl = mlkinetics.Mintun1984Model.create(copts{:});
@@ -175,8 +177,10 @@ classdef (Sealed) ModelKit < handle & mlsystem.IHandle
                 opts.scanner_kit.decayUncorrect();
                 opts.input_func_kit.decayUncorrect();
                 save(opts.input_func_kit);
-                copts = namedargs2cell(opts);
-                if any(contains(opts.model_tags, "quadratic", IgnoreCase=true))
+                copts = namedargs2cell(opts);                
+                if any(contains(opts.model_tags, "dynesty", IgnoreCase=true))
+                    mdl = mldynesty.Raichle1983Model.create();
+                elseif any(contains(opts.model_tags, "quadratic", IgnoreCase=true))
                     mdl = mlkinetics.QuadraticRaichle1983Model.create(copts{:});
                 else
                     mdl = mlkinetics.Raichle1983Model.create(copts{:});
@@ -200,8 +204,12 @@ classdef (Sealed) ModelKit < handle & mlsystem.IHandle
                 opts.scanner_kit.decayCorrect();
                 opts.input_func_kit.decayCorrect();
                 save(opts.input_func_kit);
-                copts = namedargs2cell(opts);
-                mdl = mlkinetics.Huang1980Model.create(copts{:});
+                copts = namedargs2cell(opts);                
+                if any(contains(opts.model_tags, "dynesty", IgnoreCase=true))
+                    mdl = mldynesty.Huang1980Model.create();
+                else
+                    mdl = mlkinetics.Huang1980Model.create(copts{:});
+                end
             end
             if any(contains(opts.model_tags, "2tcm", IgnoreCase=true))
                 opts.scanner_kit.decayCorrect();
@@ -215,7 +223,11 @@ classdef (Sealed) ModelKit < handle & mlsystem.IHandle
                 opts.input_func_kit.decayCorrect();
                 save(opts.input_func_kit);
                 copts = namedargs2cell(opts);
-                mdl = mlkinetics.Ichise2002Model.create(copts{:});
+                if any(contains(opts.model_tags, "dynesty", IgnoreCase=true))
+                    mdl = mldynesty.Ichise2002Model.create();
+                else
+                    mdl = mlkinetics.Ichise2002Model.create(copts{:});
+                end
             end
             if any(contains(opts.model_tags, "logan1990", IgnoreCase=true))
                 opts.scanner_kit.decayCorrect();

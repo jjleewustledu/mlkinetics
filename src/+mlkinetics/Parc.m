@@ -18,12 +18,16 @@ classdef (Abstract) Parc < handle & mlsystem.IHandle
 
     properties (Dependent)
         dlicv_ic
+        parc_tags
     end
 
     methods %% GET
         function g = get.dlicv_ic(this)
             med = this.bids_kit_.make_bids_med();
             g = med.dlicv_ic;
+        end
+        function g = get.parc_tags(this)
+            g = this.parc_tags_;
         end
     end
     

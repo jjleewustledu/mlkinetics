@@ -383,7 +383,6 @@ classdef (Abstract) Model < handle & mlsystem.IHandle
         function q1 = solutionOnScannerFrames(q, times_sampled)
             %% Selectively samples scanner activity estimated on uniform time-grid, 
             %  integrating within scanner frames.
-            %  @param q that is empty resets internal data for times and q1 := [].
             %  @param q is activity that is uniformly sampled in time.
             %  @param times_sampled are the times of the midpoints of scanner frames, all times_sampled > 0.
             %  @return q1 has the shape of times_sampled.
@@ -495,8 +494,10 @@ classdef (Abstract) Model < handle & mlsystem.IHandle
             copts = namedargs2cell(opts);
             this.initialize(copts{:}); % for abstract factories (kits)
 
-            [this.measurement_,this.times_sampled_,this.t0_,this.artery_interpolated_] = this.mixTacAif();        
-            this.set_artery_interpolated(this.artery_interpolated_);
+            if ~any(contains(opts.model_tags, "idif", IgnoreCase=true))
+                [this.measurement_,this.times_sampled_,this.t0_,this.artery_interpolated_] = this.mixTacAif();
+                this.set_artery_interpolated(this.artery_interpolated_);
+            end
         end
     end
 
