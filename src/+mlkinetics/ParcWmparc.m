@@ -178,10 +178,6 @@ classdef (Sealed) ParcWmparc < handle & mlkinetics.Parc
                 this.select_ic_ = this.mlsurfer_wmparc_.select_all();
                 return
             end
-            if contains(this.parc_tags_, "select-cortex")                
-                this.select_ic_ = this.mlsurfer_wmparc_.select_cortex();
-                return
-            end
             if contains(this.parc_tags_, "select-gray")
                 this.select_ic_ = this.mlsurfer_wmparc_.select_gray();
                 return

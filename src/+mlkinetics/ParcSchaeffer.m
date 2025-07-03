@@ -138,6 +138,7 @@ classdef (Sealed) ParcSchaeffer < handle & mlkinetics.Parc
             ifc = ic.imagingFormat;
 
             sz = size(ifc);
+            assert(prod(sz) == length(this.select_vec));  % ensure that select_ic is compatible with ic
             Nt = 1;
             ifc_mat = reshape(ifc.img, [prod(sz(1:3)), Nt]);
             img_ = zeros(this.Nx, Nt);
@@ -158,6 +159,7 @@ classdef (Sealed) ParcSchaeffer < handle & mlkinetics.Parc
             ifc = ic.imagingFormat;
 
             sz = size(ifc);
+            assert(prod(sz(1:3)) == length(this.select_vec));  % ensure that select_ic is compatible with ic
             Nt = size(ifc, 4);
             ifc_mat = reshape(ifc.img, [prod(sz(1:3)), Nt]);
             img_ = zeros(this.Nx, Nt, "single");
@@ -185,7 +187,7 @@ classdef (Sealed) ParcSchaeffer < handle & mlkinetics.Parc
             this = mlkinetics.ParcSchaeffer(varargin{:});
 
             med = this.bids_kit_.make_bids_med();
-            this.mlsurfer_schaeffer_ = mlsurfer.Schaeffer.create(med.imagingContext);
+            this.mlsurfer_schaeffer_ = mlsurfer.Schaeffer.create(med.imagingContext);  % not schaeffer_ic which is in space of T1w
 
             if contains(this.parc_tags_, "schaeffer-schaeffer")                
                 this.select_ic_ = this.mlsurfer_schaeffer_.schaeffer;
