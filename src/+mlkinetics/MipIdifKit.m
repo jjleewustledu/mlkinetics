@@ -28,7 +28,7 @@ classdef (Sealed) MipIdifKit < handle & mlkinetics.IdifKit
                 opts.use_cache logical = false
                 opts.pet_avgt = []
                 opts.pet_mipt = []
-                opts.steps logical = true(1,5)
+                opts.steps logical = true(1,6)
                 opts.delete_large_files logical = true;
                 opts.model_kind {mustBeTextScalar} = this.model_kind_
                 opts.reference_tracer {mustBeTextScalar} = "fdg"

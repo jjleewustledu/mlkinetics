@@ -310,15 +310,12 @@ classdef Test_InputFuncKit < matlab.unittest.TestCase
         function test_mipidif_kit_do_make_input_func(this)
             %% alls builders of mlaif.MipIdif to create input function
 
-            %bids_fqfn = fullfile(getenv("SINGULARITY_HOME"), ...
-            %    "CCIR_01211", "sourcedata", "sub-108293", "ses-20210421152358", "pet", ...
-            %    "sub-108293_ses-20210421152358_trc-ho_proc-delay0-BrainMoCo2-createNiftiMovingAvgFrames.nii.gz");
-            bids_fqfn = fullfile(getenv("SINGULARITY_HOME"), ...
-                "CCIR_01211", "sourcedata", "sub-108007", "ses-20210219141252", "pet", ...
-                "sub-108007_ses-20210219141252_trc-co_proc-delay0-BrainMoCo2-createNiftiMovingAvgFrames.nii.gz");
             % bids_fqfn = fullfile(getenv("SINGULARITY_HOME"), ...
-            %     "CCIR_01211", "sourcedata", "sub-108293", "ses-20210421154248", "pet", ...
-            %     "sub-108293_ses-20210421154248_trc-oo_proc-delay0-BrainMoCo2-createNiftiMovingAvgFrames.nii.gz");
+            %     "CCIR_01211", "sourcedata", "sub-108007", "ses-20210219141252", "pet", ...
+            %     "sub-108007_ses-20210219141252_trc-co_proc-delay0-BrainMoCo2-createNiftiMovingAvgFrames.nii.gz");            
+            bids_fqfn = fullfile(getenv("SINGULARITY_HOME"), ...
+                "CCIR_01211", "sourcedata", "sub-108007", "ses-20210219145054", "pet", ...
+                "sub-108007_ses-20210219145054_trc-ho_proc-delay0-BrainMoCo2-createNiftiMovingAvgFrames.nii.gz");
             this.assertTrue(isfile(bids_fqfn))
 
             tic
@@ -332,7 +329,7 @@ classdef Test_InputFuncKit < matlab.unittest.TestCase
                 bids_kit=bk, ...
                 ref_source_props=datetime(2022,2,1, TimeZone="local"), ...
                 tracer_tags="", ...
-                counter_tags="nocounter");
+                counter_tags="caprac");
             toc
 
             tic
@@ -352,13 +349,13 @@ classdef Test_InputFuncKit < matlab.unittest.TestCase
             toc
 
             tic
-            ic_mipidif = ifk.do_make_input_func(steps=logical([1,1,1,1,0]), delete_large_files=false);
+            ic_mipidif = ifk.do_make_input_func(steps=logical([0,1,0,0,0,0]), delete_large_files=false);
             toc
 
             tic
             disp(ic_mipidif)
-            disp(ic_mipidif.json_metadata)
-            plot(ic_mipidif)
+            % disp(ic_mipidif.json_metadata)
+            % plot(ic_mipidif)
             toc
         end
         function test_nifti_input_func_kit(this)
