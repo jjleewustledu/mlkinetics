@@ -1,6 +1,6 @@
 classdef OxyMetabBids < handle & mlsystem.IHandle
-    %% line1
-    %  line2
+    %% Provides canonical filenames and objects of ImagingContext2 for workflows of oxygen metabolism.
+    %  N.B. common use metricOnAtlas() and wmparc1OnAtlas().
     %  
     %  Created 03-Aug-2023 11:37:26 by jjlee in repository /Users/jjlee/MATLAB-Drive/mlkinetics/src/+mlkinetics.
     %  Developed on Matlab 9.14.0.2306882 (R2023a) Update 4 for MACI64.  Copyright 2023 John J. Lee.

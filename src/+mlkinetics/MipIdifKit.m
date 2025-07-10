@@ -31,7 +31,7 @@ classdef (Sealed) MipIdifKit < handle & mlkinetics.IdifKit
                 opts.steps logical = true(1,6)
                 opts.delete_large_files logical = true;
                 opts.model_kind {mustBeTextScalar} = this.model_kind_
-                opts.reference_tracer {mustBeTextScalar} = "fdg"
+                opts.reference_tracer {mustBeTextScalar} = "ho"
                 opts.frac_select double = mlaif.MipIdif.ALPHA
                 opts.dilate_m double = 0
             end

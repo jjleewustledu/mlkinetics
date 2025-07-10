@@ -102,30 +102,35 @@ classdef (Sealed) BidsKit < handle & mlsystem.IHandle
             end
 
             ic = mlfourd.ImagingContext2(fqfn);
-            ic = mlkinetics.BidsKit.timeAppend(ic);
+            ic = mlkinetics.BidsKit.timeAppend(ic, do_save=opts.do_save);
             fqfn = ic.fqfn;
-            if opts.do_save && ~isfile(fqfn)
-                ic.save();
-            end
         end
-        function ic = timeAppend(ic)
+        function ic = timeAppend(ic, opts)
             arguments
                 ic mlfourd.ImagingContext2
+                opts.do_save logical = true
             end
+
+            % trivial cases
             if ~contains(ic.fileprefix, "-delay0") || contains(ic.fileprefix, "_timeAppend")
                 return
             end
 
+            % generate sorted array of delayed imaging, using ImagingContext2.timeAppend()
             mg = mglob(strrep(ic.fqfn, "-delay0-", "-delay*-"));
             mg = mg(~contains(mg, ic.fqfn));
             mg = natsort(mg);
             if isempty(mg)
                 return % nothing to time-append
-            end
-            
+            end            
             for mgi = 1:length(mg)
                 d1 = mlfourd.ImagingContext2(mg(mgi));
                 ic = ic.timeAppend(d1);
+            end
+
+            % optionally, save
+            if opts.do_save && ~isfile(ic.fqfn)
+                ic.save();
             end
         end
     end
