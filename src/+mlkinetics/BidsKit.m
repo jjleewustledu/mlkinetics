@@ -119,6 +119,8 @@ classdef (Sealed) BidsKit < handle & mlsystem.IHandle
             % generate sorted array of delayed imaging, using ImagingContext2.timeAppend()
             mg = mglob(strrep(ic.fqfn, "-delay0-", "-delay*-"));
             mg = mg(~contains(mg, ic.fqfn));
+            mg = mg(~contains(mg, "_avgt"));
+            mg = mg(~contains(mg, "_mipt"));
             mg = natsort(mg);
             if isempty(mg)
                 return % nothing to time-append
