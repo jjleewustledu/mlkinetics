@@ -131,6 +131,38 @@ classdef (Sealed) ParcSchaeffer < handle & mlkinetics.Parc
             end
             error("mlkinetic:RuntimeError", stackstr())
         end
+        function ic1 = reshape_to_parc_fast(this, fqfn)
+            %% assumes filename corresponds to 4D large NIfTI; saves results immediately
+
+            arguments
+                this mlkinetics.ParcSchaeffer
+                fqfn {mustBeFile}
+            end
+
+            if ~isfile(fqfn)
+                fqfn = strrep(fqfn, ".nii.gz", ".nii");
+            end
+            assert(isfile(fqfn))
+            ifc = mlfourd.ImagingFormatContext2(fqfn);
+
+            sz = size(ifc);
+            % assert(prod(sz(1:3)) == length(this.select_vec));  % ensure that select_ic is compatible with ic
+            Nt = size(ifc, 4);
+            ifc_mat = reshape(ifc.img, [prod(sz(1:3)), Nt]);
+            ifc.img = [];  % conserve memory
+            img_ = zeros(this.Nx, Nt, "single");
+            for idx = 1:this.Nx
+                idx_select = this.select_vec == this.unique_indices(idx);
+                img_(idx, :) = mean(ifc_mat(idx_select,:), 1, "omitnan");
+            end
+            ifc.img = single(img_);
+            tags = "ParcSchaeffer-reshape-to-" + this.parc_tags;
+            tags = strrep(tags, "_", "-");
+            ifc.fileprefix = ifc.fileprefix + "-" + tags;
+            ic1 = mlfourd.ImagingContext2(ifc);
+
+            ic1.filepath = strrep(ic1.filepath, "sourcedata", "derivatives");
+        end
         function ic1 = reshape_to_parc_3d(this, ic)
             %% ndims(ic) == 3 => ndims(ic1) == 2
 
@@ -138,9 +170,10 @@ classdef (Sealed) ParcSchaeffer < handle & mlkinetics.Parc
             ifc = ic.imagingFormat;
 
             sz = size(ifc);
-            assert(prod(sz) == length(this.select_vec));  % ensure that select_ic is compatible with ic
+            % assert(prod(sz) == length(this.select_vec));  % ensure that select_ic is compatible with ic
             Nt = 1;
             ifc_mat = reshape(ifc.img, [prod(sz(1:3)), Nt]);
+            ifc.img = [];  % conserve memory
             img_ = zeros(this.Nx, Nt);
             for idx = 1:this.Nx
                 idx_select = this.select_vec == this.unique_indices(idx);
@@ -159,9 +192,10 @@ classdef (Sealed) ParcSchaeffer < handle & mlkinetics.Parc
             ifc = ic.imagingFormat;
 
             sz = size(ifc);
-            assert(prod(sz(1:3)) == length(this.select_vec));  % ensure that select_ic is compatible with ic
+            % assert(prod(sz(1:3)) == length(this.select_vec));  % ensure that select_ic is compatible with ic
             Nt = size(ifc, 4);
             ifc_mat = reshape(ifc.img, [prod(sz(1:3)), Nt]);
+            ifc.img = [];  % conserve memory
             img_ = zeros(this.Nx, Nt, "single");
             for idx = 1:this.Nx
                 idx_select = this.select_vec == this.unique_indices(idx);
