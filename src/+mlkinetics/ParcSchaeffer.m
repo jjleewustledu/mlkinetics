@@ -6,25 +6,59 @@ classdef (Sealed) ParcSchaeffer < handle & mlkinetics.Parc
     %  Developed on Matlab 23.2.0.2380103 (R2023b) Update 1 for MACI64.  Copyright 2023 John J. Lee.
     
     properties (Dependent)
+        indices_wb
+        indices_gm
+        indices_wm  % no cerebellum
+        indices_brainstem
+        indices_cerebellum
+        indices_csf
+        indices_subcortex  % no cerebellum
+        indices_schaef  % 309 non-zero elements; from a single canonical file saved as mat
+        Nschaef
         Nx
-        unique_indices
-        select_ic
-        select_vec
+        select_ic  % ImagingContext2 of selected subject's Schaeffer atlas on functional imaging target
+        select_vec  % reshaped select_ic.imagingFormat.img
+        unique_indices  % unique indices from select_ic|select_vec
     end
 
     methods %% GET
-        function g = get.Nx(this)
-            g = numel(this.unique_indices);            
+        function g = get.indices_wb(this)
+            g = this.mlsurfer_schaeffer_.label_to_num('wb');
         end
-        function g = get.unique_indices(this)
-            if ~isempty(this.unique_indices_)
-                g = this.unique_indices_;
+        function g = get.indices_gm(this)
+            g = this.mlsurfer_schaeffer_.label_to_num('gm');
+        end
+        function g = get.indices_wm(this)
+            g = this.mlsurfer_schaeffer_.label_to_num('wm');
+        end
+        function g = get.indices_subcortex(this)
+            g = this.mlsurfer_schaeffer_.label_to_num('subcortex');
+        end
+        function g = get.indices_brainstem(this)
+            g = this.mlsurfer_schaeffer_.label_to_num('brainstem');
+        end
+        function g = get.indices_cerebellum(this)
+            g = this.mlsurfer_schaeffer_.label_to_num('cerebellum');
+        end
+        function g = get.indices_csf(this)
+            g = this.mlsurfer_schaeffer_.label_to_num('csf');
+        end
+        function g = get.indices_schaef(this)
+            if ~isempty(this.indices_schaef_)
+                g = this.indices_schaef_;
                 return
             end
 
-            ifc_ = this.select_ic_.imagingFormat;
-            this.unique_indices_ = unique(ifc_.img(ifc_.img > 0));
-            g = this.unique_indices_;
+            ld = load(fullfile(getenv("SINGULARITY_HOME"), "CCIR_01211", "indices_schaef.mat"));
+            g = ld.indices_schaef;
+            g = g(g ~= 0);  % assurance
+            this.indices_schaef_ = g;
+        end
+        function g = get.Nx(this)
+            g = numel(this.unique_indices);            
+        end
+        function g = get.Nschaef(this)
+            g = numel(this.indices_schaef);            
         end
         function g = get.select_ic(this)
             g = this.select_ic_;
@@ -39,6 +73,16 @@ classdef (Sealed) ParcSchaeffer < handle & mlkinetics.Parc
             numel_ = numel(this.select_ic_);
             this.select_vec_ = reshape(ifc_.img, [numel_, 1]);
             g = this.select_vec_;
+        end
+        function g = get.unique_indices(this)
+            if ~isempty(this.unique_indices_)
+                g = this.unique_indices_;
+                return
+            end
+
+            ifc_ = this.select_ic_.imagingFormat;
+            this.unique_indices_ = unique(ifc_.img(ifc_.img > 0));
+            g = this.unique_indices_;
         end
     end
 
@@ -71,6 +115,7 @@ classdef (Sealed) ParcSchaeffer < handle & mlkinetics.Parc
 
             idx = [1 7:13 16:20 24 26:28 1025 2000 3000 4000 5001 5002 6000];
         end
+        
         function ic = reshape_from_parc(this, ic1, opts)
             %% ndims(ic1) == 2 => ndims(ic) == 4, inverse of reshape_to_parc
 
@@ -112,6 +157,7 @@ classdef (Sealed) ParcSchaeffer < handle & mlkinetics.Parc
             ic = mlfourd.ImagingContext2(ifc11);
             ic.filepath = strrep(ic1.filepath, "sourcedata", "derivatives");
         end
+        
         function ic1 = reshape_to_parc(this, ic)
 
             % convenience
@@ -131,20 +177,40 @@ classdef (Sealed) ParcSchaeffer < handle & mlkinetics.Parc
             end
             error("mlkinetic:RuntimeError", stackstr())
         end
+        
         function ic1 = reshape_to_parc_fast(this, fqfn)
-            %% assumes filename corresponds to 4D large NIfTI; saves results immediately
+            %% redirects to the currently preferred reshaping approach
+
+            switch mlvg.Lee2025.PARC_SCHAEF_TAG
+                case "-ParcSchaeffer-reshape-to-schaeffer-schaeffer"
+                    ic1 = reshape_to_parc_fast_previous(this, fqfn);
+                case "-ParcSchaeffer-invariant-schaeffer-schaeffer"
+                    ic1 = reshape_to_parc_invariant(this, fqfn);
+                case "-ParcSchaeffer-highsnr-schaeffer-schaeffer"
+                    ic1 = reshape_to_parc_highsnr(this, fqfn);
+                otherwise
+                    error("mlkinetics:ValueError", stackstr())
+            end
+        end
+        
+        function ic1 = reshape_to_parc_fast_previous(this, fqfn)
+            %% Assumes filename corresponds to 4D large NIfTI; saves results immediately.
+            %  Uses subject's specific Schaefer NIfTI on functional target which may be missing parcs or have extra
+            %  parcs.  
 
             arguments
                 this mlkinetics.ParcSchaeffer
                 fqfn {mustBeFile}
             end
 
+            % load 4D PET
             if ~isfile(fqfn)
                 fqfn = strrep(fqfn, ".nii.gz", ".nii");
             end
             assert(isfile(fqfn))
             ifc = mlfourd.ImagingFormatContext2(fqfn);
 
+            % reshape 4D to 2D ~ Npos x Nt, Npos = \prod_{a \in [x,y,z]} N_a
             sz = size(ifc);
             % assert(prod(sz(1:3)) == length(this.select_vec));  % ensure that select_ic is compatible with ic
             Nt = size(ifc, 4);
@@ -163,49 +229,90 @@ classdef (Sealed) ParcSchaeffer < handle & mlkinetics.Parc
 
             ic1.filepath = strrep(ic1.filepath, "sourcedata", "derivatives");
         end
-        function ic1 = reshape_to_parc_3d(this, ic)
-            %% ndims(ic) == 3 => ndims(ic1) == 2
+        
+        function ic1 = reshape_to_parc_invariant(this, fqfn)
+            %% Assumes filename corresponds to 4D large NIfTI; saves results immediately.
+            %  Safeguards against missing|extraneous parcels, typically arising from registration of T1w
+            %  parcel atlas to specific PET, by using canonical indices_schaef using nan as needed.
 
-            assert(ndims(ic) == 3)
-            ifc = ic.imagingFormat;
-
-            sz = size(ifc);
-            % assert(prod(sz) == length(this.select_vec));  % ensure that select_ic is compatible with ic
-            Nt = 1;
-            ifc_mat = reshape(ifc.img, [prod(sz(1:3)), Nt]);
-            ifc.img = [];  % conserve memory
-            img_ = zeros(this.Nx, Nt);
-            for idx = 1:this.Nx
-                idx_select = this.select_vec == this.unique_indices(idx);
-                img_(idx) = mean(ifc_mat(idx_select), 1, "omitnan");
+            arguments
+                this mlkinetics.ParcSchaeffer
+                fqfn {mustBeFile}
             end
-            ifc.img = single(img_);
-            tags = strrep(stackstr(), "parc_3d", this.parc_tags);
-            tags = strrep(tags, "_", "-");
-            ifc.fileprefix = ifc.fileprefix + "-" + tags;
-            ic1 = mlfourd.ImagingContext2(ifc);
-        end
-        function ic1 = reshape_to_parc_4d(this, ic)
-            %% ndims(ic) == 4 => ndims(ic1) == 2
 
-            assert(ndims(ic) == 4)            
-            ifc = ic.imagingFormat;
+            % load 4D PET
+            if ~isfile(fqfn)
+                fqfn = strrep(fqfn, ".nii.gz", ".nii");
+            end
+            assert(isfile(fqfn))
+            ifc = mlfourd.ImagingFormatContext2(fqfn);
 
+            % reshape 4D to 2D ~ Npos x Nt, Npos = \prod_{a \in [x,y,z]} N_a
             sz = size(ifc);
             % assert(prod(sz(1:3)) == length(this.select_vec));  % ensure that select_ic is compatible with ic
             Nt = size(ifc, 4);
             ifc_mat = reshape(ifc.img, [prod(sz(1:3)), Nt]);
             ifc.img = [];  % conserve memory
-            img_ = zeros(this.Nx, Nt, "single");
-            for idx = 1:this.Nx
-                idx_select = this.select_vec == this.unique_indices(idx);
-                img_(idx, :) = mean(ifc_mat(idx_select,:), 1, "omitnan");
+            img_ = zeros(this.Nschaef, Nt, "single");
+            for idx = 1:this.Nschaef
+                mask_idx = ismember(this.select_vec, this.indices_schaef(idx));
+                if any(mask_idx, "all")
+                    img_(idx, :) = median(ifc_mat(mask_idx,:), 1, "omitnan");
+                else
+                    img_(idx, :) = nan;
+                end
             end
             ifc.img = single(img_);
-            tags = strrep(stackstr(), "parc_4d", this.parc_tags);
+            tags = "ParcSchaeffer-invariant-" + this.parc_tags;
             tags = strrep(tags, "_", "-");
             ifc.fileprefix = ifc.fileprefix + "-" + tags;
             ic1 = mlfourd.ImagingContext2(ifc);
+
+            ic1.filepath = strrep(ic1.filepath, "sourcedata", "derivatives");
+        end
+        
+        function ic1 = reshape_to_parc_highsnr(this, fqfn)
+            %% Assumes filename corresponds to 4D large NIfTI; saves results immediately.
+            %  Safeguards against missing|extraneous parcels, typically arising from registration of T1w
+            %  parcel atlas to specific PET, by using canonical indices_schaef using nan as needed.
+
+            arguments
+                this mlkinetics.ParcSchaeffer
+                fqfn {mustBeFile}
+            end
+
+            % load 4D PET
+            if ~isfile(fqfn)
+                fqfn = strrep(fqfn, ".nii.gz", ".nii");
+            end
+            assert(isfile(fqfn))
+            ifc = mlfourd.ImagingFormatContext2(fqfn);
+
+            % reshape 4D to 2D ~ Npos x Nt, Npos = \prod_{a \in [x,y,z]} N_a
+            sz = size(ifc);
+            % assert(prod(sz(1:3)) == length(this.select_vec));  % ensure that select_ic is compatible with ic
+            Nt = size(ifc, 4);
+            ifc_mat = reshape(ifc.img, [prod(sz(1:3)), Nt]);
+            ifc.img = [];  % conserve memory
+            parcs = { ...
+                this.indices_wb, this.indices_gm, this.indices_wm, this.indices_subcortex, ...
+                this.indices_cerebellum, this.indices_brainstem, this.indices_csf};
+            img_ = zeros(numel(parcs), Nt, "single");
+            for idx = 1:length(parcs)
+                mask_idx = ismember(this.select_vec, parcs{idx});
+                if any(mask_idx, "all")
+                    img_(idx, :) = median(ifc_mat(mask_idx,:), 1, "omitnan");
+                else
+                    img_(idx, :) = nan;
+                end
+            end
+            ifc.img = single(img_);
+            tags = "ParcSchaeffer-highsnr-" + this.parc_tags;
+            tags = strrep(tags, "_", "-");
+            ifc.fileprefix = ifc.fileprefix + "-" + tags;
+            ic1 = mlfourd.ImagingContext2(ifc);
+
+            ic1.filepath = strrep(ic1.filepath, "sourcedata", "derivatives");
         end
     end
     
@@ -253,6 +360,7 @@ classdef (Sealed) ParcSchaeffer < handle & mlkinetics.Parc
     %% PRIVATE
 
     properties (Access = private)
+        indices_schaef_
         Nx_
         select_ic_
         select_vec_
@@ -260,9 +368,55 @@ classdef (Sealed) ParcSchaeffer < handle & mlkinetics.Parc
         mlsurfer_schaeffer_
     end
 
-    methods
+    methods (Access = private)
         function this = ParcSchaeffer(varargin)
             this = this@mlkinetics.Parc(varargin{:});
+        end
+        
+        function ic1 = reshape_to_parc_3d(this, ic)
+            %% ndims(ic) == 3 => ndims(ic1) == 2
+
+            assert(ndims(ic) == 3)
+            ifc = ic.imagingFormat;
+
+            sz = size(ifc);
+            % assert(prod(sz) == length(this.select_vec));  % ensure that select_ic is compatible with ic
+            Nt = 1;
+            ifc_mat = reshape(ifc.img, [prod(sz(1:3)), Nt]);
+            ifc.img = [];  % conserve memory
+            img_ = zeros(this.Nx, Nt);
+            for idx = 1:this.Nx
+                idx_select = this.select_vec == this.unique_indices(idx);
+                img_(idx) = mean(ifc_mat(idx_select), 1, "omitnan");
+            end
+            ifc.img = single(img_);
+            tags = strrep(stackstr(), "parc_3d", this.parc_tags);
+            tags = strrep(tags, "_", "-");
+            ifc.fileprefix = ifc.fileprefix + "-" + tags;
+            ic1 = mlfourd.ImagingContext2(ifc);
+        end
+        
+        function ic1 = reshape_to_parc_4d(this, ic)
+            %% ndims(ic) == 4 => ndims(ic1) == 2
+
+            assert(ndims(ic) == 4)            
+            ifc = ic.imagingFormat;
+
+            sz = size(ifc);
+            % assert(prod(sz(1:3)) == length(this.select_vec));  % ensure that select_ic is compatible with ic
+            Nt = size(ifc, 4);
+            ifc_mat = reshape(ifc.img, [prod(sz(1:3)), Nt]);
+            ifc.img = [];  % conserve memory
+            img_ = zeros(this.Nx, Nt, "single");
+            for idx = 1:this.Nx
+                idx_select = this.select_vec == this.unique_indices(idx);
+                img_(idx, :) = mean(ifc_mat(idx_select,:), 1, "omitnan");
+            end
+            ifc.img = single(img_);
+            tags = strrep(stackstr(), "parc_4d", this.parc_tags);
+            tags = strrep(tags, "_", "-");
+            ifc.fileprefix = ifc.fileprefix + "-" + tags;
+            ic1 = mlfourd.ImagingContext2(ifc);
         end
     end
     
