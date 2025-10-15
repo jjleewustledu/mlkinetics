@@ -289,10 +289,11 @@ classdef (Sealed) ParcSchaeffer < handle & mlkinetics.Parc
             ifc = mlfourd.ImagingFormatContext2(fqfn);
 
             % reshape 4D to 2D ~ Npos x Nt, Npos = \prod_{a \in [x,y,z]} N_a
-            sz = size(ifc);
+            img_ = ifc.img;
+            sz = size(img_);
             % assert(prod(sz(1:3)) == length(this.select_vec));  % ensure that select_ic is compatible with ic
-            Nt = size(ifc, 4);
-            ifc_mat = reshape(ifc.img, [prod(sz(1:3)), Nt]);
+            Nt = sz(4);
+            ifc_mat = reshape(img_, [prod(sz(1:3)), Nt]);
             ifc.img = [];  % conserve memory
             parcs = { ...
                 this.indices_wb, this.indices_gm, this.indices_wm, this.indices_subcortex, ...
